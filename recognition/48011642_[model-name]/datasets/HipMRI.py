@@ -13,8 +13,9 @@ class HipMRIDataset(Dataset):
     def __init__(self, file_path, train=True, transform=None):
         image_names = listdir(file_path)
         data = load_data_2D(file_path, image_names)
-        self.data = np.array([cv2.resize(x, dsize=(
+        data = np.array([cv2.resize(x, dsize=(
             32, 32), interpolation=cv2.INTER_CUBIC) for x in data])
+        self.data = np.expand_dims(data, axis=1)
 
         self.transform = transform
 
