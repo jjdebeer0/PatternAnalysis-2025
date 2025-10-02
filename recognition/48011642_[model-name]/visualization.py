@@ -103,7 +103,7 @@ def calculate_ssim(x_val, x_recon):
     I1 = np.transpose(x_val, (1,2,0))
     I2 = np.transpose(x_recon, (1,2,0))
     # I2 = cv2.imread('./blur.png')
-    I2 = cv2.resize(I2, I1.shape[0:2])
+    #I2 = cv2.resize(I2, I1.shape[0:2])
     # print(I1.shape, I2.shape) # returns (256,256,3)
     
     # tensors
@@ -128,7 +128,7 @@ def calculate_ssim(x_val, x_recon):
 End of utilities
 """
 
-model_filename = 'vqvae_data_thu_oct_2_10_37_41_2025.pth'
+model_filename = 'vqvae_data_thu_oct_2_16_58_57_2025.pth'
 
 model,vqvae_data = load_model(model_filename)
 
@@ -136,14 +136,12 @@ model,vqvae_data = load_model(model_filename)
 """# Load dataset and loaders"""
 
 import utils
-training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders('CIFAR10', 32)
+training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders('HIPMRI', 32)
 
 """# Reconstruct validation data"""
 
 x_val,x_val_recon,z_q,e_indices = reconstruct(validation_loader,model)
 print(x_val.shape)
-x_val = x_val[:32]
-x_val_recon = x_val_recon[:32]
 display_image_grid(x_val, 'validation_data')
 
 display_image_grid(x_val_recon, 'validation_data_reconstruction')

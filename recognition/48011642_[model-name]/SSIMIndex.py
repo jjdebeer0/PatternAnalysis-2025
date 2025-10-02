@@ -29,10 +29,10 @@ def ssim(image1, image2, K, window_size, L):
             
     # define constants
     # * L = 255 for constants doesn't produce meaningful results; thus L = 1
-    # C1 = (K[0]*L)**2;
-    # C2 = (K[1]*L)**2;
-    C1 = K[0]**2;
-    C2 = K[1]**2;
+    # C1 = (K[0]*L)**2
+    # C2 = (K[1]*L)**2
+    C1 = K[0]**2
+    C2 = K[1]**2
     
     mu1 = F.conv2d(image1, window, padding = window_size//2, groups = channel)
     mu2 = F.conv2d(image2, window, padding = window_size//2, groups = channel)
