@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from torch.utils.data import Dataset
+from os import listdir
 
 
 class HipMRIDataset(Dataset):
@@ -10,15 +11,11 @@ class HipMRIDataset(Dataset):
     """
 
     def __init__(self, file_path, train=True, transform=None):
-        print('Loading block data')
-        data = np.load(file_path, allow_pickle=True)
-        print('Done loading block data')
-        data = np.array([cv2.resize(x[0][0][:, :, :3], dsize=(
+        image_names = listdir(file_path)
+        data = load_data_2D(file_path, image_names)
+        self.data = np.array([cv2.resize(x, dsize=(
             32, 32), interpolation=cv2.INTER_CUBIC) for x in data])
 
-        n = data.shape[0]
-        cutoff = n//10
-        self.data = data[:-cutoff] if train else data[-cutoff:]
         self.transform = transform
 
     def __getitem__(self, index):
@@ -32,7 +29,6 @@ class HipMRIDataset(Dataset):
         return len(self.data)
 
 import nibabel as nib
-from tqdm import tqdm
 
 def to_channels(arr: np.ndarray, dtype=np.uint8)-> np.ndarray:
     channels = np.unique(arr)
@@ -44,7 +40,7 @@ def to_channels(arr: np.ndarray, dtype=np.uint8)-> np.ndarray:
     return res
 
 #load medical image functions
-def load_data_2D(imageNames, normImage=False, categorical=False, dtype=np.float32,
+def load_data_2D(folder_path, imageNames, normImage=False, categorical=False, dtype=np.float32,
                  getAffines=False, early_stop=False):
     '''
     Load medical image data from names, cases list provided into a list for each.
@@ -59,7 +55,7 @@ def load_data_2D(imageNames, normImage=False, categorical=False, dtype=np.float3
 
     #get fixed size
     num = len(imageNames)
-    first_case = nib.load(imageNames[0]).get_fdata(caching='unchanged')
+    first_case = nib.load(folder_path + '/' + imageNames[0]).get_fdata(caching='unchanged')
     if len(first_case.shape) == 3:
         first_case = first_case[:,:,0] #sometimes extra dims, remove
     if categorical:
@@ -70,10 +66,12 @@ def load_data_2D(imageNames, normImage=False, categorical=False, dtype=np.float3
         rows, cols = first_case.shape
         images = np.zeros((num, rows, cols), dtype=dtype)
 
-    for i, inName in enumerate(tqdm(imageNames)):
-        niftiImage = nib.load(inName)
+    for i, inName in enumerate(imageNames):
+        niftiImage = nib.load(folder_path + '/' + inName)
         inImage = niftiImage.get_fdata(caching='unchanged') #read disk only
         affine = niftiImage.affine
+        if inImage.shape != (rows, cols):
+            inImage = cv2.resize(inImage, dsize=(cols, rows), interpolation=cv2.INTER_CUBIC)
         if len(inImage.shape) == 3:
             inImage = inImage[:,:,0] #sometimes extra dims in HipMRI_study data
         inImage = inImage.astype(dtype)

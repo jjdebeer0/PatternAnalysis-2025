@@ -142,6 +142,8 @@ training_data, validation_data, training_loader, validation_loader, x_train_var 
 
 x_val,x_val_recon,z_q,e_indices = reconstruct(validation_loader,model)
 print(x_val.shape)
+x_val = x_val[:32]
+x_val_recon = x_val_recon[:32]
 display_image_grid(x_val, 'validation_data')
 
 display_image_grid(x_val_recon, 'validation_data_reconstruction')

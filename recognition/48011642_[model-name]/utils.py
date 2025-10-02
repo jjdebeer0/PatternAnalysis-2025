@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 import time
 import os
 from datasets.block import BlockDataset, LatentBlockDataset
+from datasets.HipMRI import HipMRIDataset
 import numpy as np
 
 
@@ -57,6 +58,16 @@ def load_latent_block():
                        transform=None)
     return train, val
 
+def load_hipmri():
+    data_folder_path = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data/'
+
+    train = HipMRIDataset(data_folder_path + 'keras_slices_train', train=True,
+                          transform=None)
+    
+    val = HipMRIDataset(data_folder_path + 'keras_slices_validate', train=False,
+                        transform=None)
+    return train, val
+
 
 def data_loaders(train_data, val_data, batch_size):
 
@@ -90,6 +101,12 @@ def load_data_and_data_loaders(dataset, batch_size):
             training_data, validation_data, batch_size)
 
         x_train_var = np.var(training_data.data)
+    
+    elif dataset == 'HIPMRI':
+        training_data, validation_data = load_hipmri()
+        training_loader, validation_loader = data_loaders(
+            training_data, validation_data, batch_size)
+        x_train_var = np.var(training_data.data / 255.0)
 
     else:
         raise ValueError(
