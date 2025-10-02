@@ -18,6 +18,10 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from torchvision.utils import make_grid
 import numpy as np
+from SSIMIndex import ssim
+import cv2
+import torch.nn.functional as F
+from torch.autograd import Variable
 
 # %matplotlib inline
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -90,6 +94,36 @@ def reconstruct(data_loader,model):
     x_recon = model.decoder(z_q)
     return x,x_recon, z_q,e_indices
 
+def calculate_ssim(x_val, x_recon):
+    x_val = x_val.cpu().detach()+0.5
+    x_recon = x_recon.cpu().detach()+0.5
+    x_val = x_val.numpy()
+    x_recon = x_recon.numpy()
+    # opencv image load
+    I1 = np.transpose(x_val, (1,2,0))
+    I2 = np.transpose(x_recon, (1,2,0))
+    # I2 = cv2.imread('./blur.png')
+    I2 = cv2.resize(I2, I1.shape[0:2])
+    # print(I1.shape, I2.shape) # returns (256,256,3)
+    
+    # tensors
+    I1 = torch.from_numpy(np.rollaxis(I1, 2)).float().unsqueeze(0)/255.0
+    I2 = torch.from_numpy(np.rollaxis(I2, 2)).float().unsqueeze(0)/255.0
+    # print(I1.size(), I2.size()) # returns torch([1,3,256,256])
+    
+    # tensor.autograd.Variable (Automatic differentiation variable)
+    I1 = Variable(I1, requires_grad = True)
+    I2 = Variable(I2, requires_grad = True)
+    
+    # default constants
+    K = [0.01, 0.03]
+    L = 255; 
+    window_size = 11
+    
+    ssim_value = ssim(I1, I2, K, window_size, L)
+    
+    print(ssim_value.data)
+
 """
 End of utilities
 """
@@ -111,6 +145,9 @@ print(x_val.shape)
 display_image_grid(x_val, 'validation_data')
 
 display_image_grid(x_val_recon, 'validation_data_reconstruction')
+
+for i in range(x_val.size(dim=0)):
+    calculate_ssim(x_val[i], x_val_recon[i])
 
 """# Smoothed Loss and Perplexity Values"""
 
