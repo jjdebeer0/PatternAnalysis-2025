@@ -30,9 +30,9 @@ def load_model(model_filename):
     path = os.getcwd() + '/results/'
 
     if torch.cuda.is_available():
-        data = torch.load(path + model_filename)
+        data = torch.load(path + model_filename,weights_only=False)
     else:
-        data = torch.load(path+model_filename,map_location=lambda storage, loc: storage)
+        data = torch.load(path+model_filename,map_location=lambda storage, loc: storage,weights_only=False)
 
     params = data["hyperparameters"]
 
@@ -70,13 +70,16 @@ def plot_metrics(data):
     ax.set_yscale('log')
     ax.set_title('Overall Loss')
     ax.set_xlabel('iteration')
+    plt.savefig("results/metrics.png")
+    plt.close()
 
-def display_image_grid(x):
+def display_image_grid(x, name):
     x = make_grid(x.cpu().detach()+0.5)
     x = x.numpy()
     fig = plt.imshow(np.transpose(x, (1,2,0)), interpolation='nearest')
     fig.axes.get_xaxis().set_visible(False)
     fig.axes.get_yaxis().set_visible(False)
+    plt.savefig(f'results/{name}.png')
 
 def reconstruct(data_loader,model):
     (x, _) = next(iter(data_loader))
@@ -91,7 +94,7 @@ def reconstruct(data_loader,model):
 End of utilities
 """
 
-model_filename = 'vqvae_data_static_block_data_ne512_de64_1000.pth'
+model_filename = 'vqvae_data_thu_oct_2_10_37_41_2025.pth'
 
 model,vqvae_data = load_model(model_filename)
 
@@ -99,15 +102,15 @@ model,vqvae_data = load_model(model_filename)
 """# Load dataset and loaders"""
 
 import utils
-training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders('BLOCK', 32)
+training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders('CIFAR10', 32)
 
 """# Reconstruct validation data"""
 
 x_val,x_val_recon,z_q,e_indices = reconstruct(validation_loader,model)
 print(x_val.shape)
-display_image_grid(x_val)
+display_image_grid(x_val, 'validation_data')
 
-display_image_grid(x_val_recon)
+display_image_grid(x_val_recon, 'validation_data_reconstruction')
 
 """# Smoothed Loss and Perplexity Values"""
 
@@ -160,7 +163,7 @@ def uniform_samples(model):
 
 x_val_recon,z_q,e_indices = uniform_samples(model)
 
-display_image_grid(x_val_recon)
+display_image_grid(x_val_recon, 'uniform_sampling_of_latent_space')
 
 """## Categorial Distribution Sampling"""
 
@@ -214,7 +217,7 @@ def histogram_samples(model):
 
 x_hist,_,_ = histogram_samples(model)
 
-display_image_grid(x_hist)
+display_image_grid(x_hist, 'categorical_distribution_sampling')
 
 """## The most common representation"""
 
@@ -234,312 +237,313 @@ def most_common_samples(model):
 
 x_val_recon,z_q,e_indices = most_common_samples(model)
 
-display_image_grid(x_val_recon)
+display_image_grid(x_val_recon, 'most_common_representation')
 
-"""# Reconstruct from PixelCNN"""
+# """# Reconstruct from PixelCNN"""
 
-import os
-data_folder_path = os.getcwd()
-data_file_path = data_folder_path + '/data/latent_samples.npy'
+# import os
+# data_folder_path = os.getcwd()
+# data_file_path = data_folder_path + '/data/latent_samples.npy'
 
-samples = np.load(data_file_path,allow_pickle=True)
+# samples = np.load(data_file_path,allow_pickle=True)
 
-def reconstruct_from_pixelcnn(model,samples):
+# def reconstruct_from_pixelcnn(model,samples):
 
 
-    min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
-    x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
+#     min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
+#     x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
 
-    return x_recon, z_q,e_indices
+#     return x_recon, z_q,e_indices
 
 
-x_val_recon,z_q,e_indices = reconstruct_from_pixelcnn(model,samples)
+# x_val_recon,z_q,e_indices = reconstruct_from_pixelcnn(model,samples)
 
-display_image_grid(x_val_recon)
+# display_image_grid(x_val_recon, 'pixelcnn_reconstruction')
 
-"""# Color coding
+# """# Color coding
 
-1. load all data
-2. compute COM for all data
-3. get representation indices for all data and hash them
-4. organize all data by index for steps 1-3
-5. build unique color scheme for all used representations
-6. iterate through hash values and color the COM pixel with hash values
+# 1. load all data
+# 2. compute COM for all data
+# 3. get representation indices for all data and hash them
+# 4. organize all data by index for steps 1-3
+# 5. build unique color scheme for all used representations
+# 6. iterate through hash values and color the COM pixel with hash values
 
-display resulting image
-"""
+# display resulting image
+# """
 
-import random
-import seaborn as sns
+# import random
+# import seaborn as sns
 
-def encode_data(data,model):
-    x = data.data # assumes youre using Pytorch formatted dataset
-    x = torch.tensor(x).float().to(device)
-    x = x.permute(0,3,1,2).contiguous()
-    x = x.to(device)
-    vq_encoder_output = model.pre_quantization_conv(model.encoder(x))
-    _, z_q, _, _,e_indices = model.vector_quantization(vq_encoder_output)
+# def encode_data(data,model):
+#     x = data.data # assumes youre using Pytorch formatted dataset
+#     x = torch.tensor(x).float().to(device)
+#     x = x.permute(0,3,1,2).contiguous()
+#     x = x.to(device)
+#     vq_encoder_output = model.pre_quantization_conv(model.encoder(x))
+#     _, z_q, _, _,e_indices = model.vector_quantization(vq_encoder_output)
 
-    x_recon = model.decoder(z_q)
-    return x,x_recon, z_q,e_indices
+#     x_recon = model.decoder(z_q)
+#     return x,x_recon, z_q,e_indices
 
-def count_and_hash_representations(e_indices,prune=2):
-    x_hashes = []
-    d = {}
-    n = int(len(e_indices)/64)
-    for i in range(n):
-        k = e_indices[64*i:64*i+64].squeeze().cpu().detach().numpy()
-        hash_ = hash(tuple(k))
+# def count_and_hash_representations(e_indices,prune=2):
+#     x_hashes = []
+#     d = {}
+#     n = int(len(e_indices)/64)
+#     for i in range(n):
+#         k = e_indices[64*i:64*i+64].squeeze().cpu().detach().numpy()
+#         hash_ = hash(tuple(k))
 
-        if hash_ not in d:
-            d[hash_] = 1
-        else:
-            d[hash_]+=1
+#         if hash_ not in d:
+#             d[hash_] = 1
+#         else:
+#             d[hash_]+=1
 
-        x_hashes.append(hash_)
+#         x_hashes.append(hash_)
 
-    # prune hash table
-    d = dict((k, v) for k, v in d.items() if v >= prune)
+#     # prune hash table
+#     d = dict((k, v) for k, v in d.items() if v >= prune)
 
-    return d,x_hashes
+#     return d,x_hashes
 
 
-def create_color_template(n):
-    num_shades = n
-    if n < 1000:
-        sns.palplot(sns.husl_palette(num_shades))
-        color_list = sns.husl_palette(num_shades)
-    else:
-        sns.palplot(sns.cubehelix_palette(num_shades))
-        color_list = sns.cubehelix_palette(num_shades)
+# def create_color_template(n):
+#     num_shades = n
+#     if n < 1000:
+#         sns.palplot(sns.husl_palette(num_shades))
+#         color_list = sns.husl_palette(num_shades)
+#     else:
+#         sns.palplot(sns.cubehelix_palette(num_shades))
+#         color_list = sns.cubehelix_palette(num_shades)
 
 
-    rgb_list = []
-    for color in color_list:
-        rgb = []
-        for value in color:
-            value *= 255
-            rgb.append(int(value))
-        rgb_list.append(np.array(rgb).astype(int))
+#     rgb_list = []
+#     for color in color_list:
+#         rgb = []
+#         for value in color:
+#             value *= 255
+#             rgb.append(int(value))
+#         rgb_list.append(np.array(rgb).astype(int))
 
-    return rgb_list
+#     return rgb_list
 
-from collections import Counter
+# from collections import Counter
 
-PRUNE = 0
-N_TOP_REPS = 500
+# PRUNE = 0
+# N_TOP_REPS = 500
 
-# get data and discrete indices
-data,_,_,e_indices = encode_data(training_data,model)
+# # get data and discrete indices
+# data,_,_,e_indices = encode_data(training_data,model)
 
-# create a hash table with most common representations
-d, data_hashes = count_and_hash_representations(e_indices,PRUNE)
+# # create a hash table with most common representations
+# d, data_hashes = count_and_hash_representations(e_indices,PRUNE)
 
-d = dict(Counter(d).most_common(N_TOP_REPS))
+# d = dict(Counter(d).most_common(N_TOP_REPS))
 
-# count num of reps
-n = len(d.keys())
-print(n)
-colors = create_color_template(n)
-color_hash_table = {k:v for k,v in zip(d.keys(),colors)}
+# # count num of reps
+# n = len(d.keys())
+# print(n)
+# colors = create_color_template(n)
+# color_hash_table = {k:v for k,v in zip(d.keys(),colors)}
 
-data = data.cpu().detach().numpy()
+# data = data.cpu().detach().numpy()
 
 
-color_img = np.zeros((32,32,3))
+# color_img = np.zeros((32,32,3))
 
-colored_data = data.copy()
+# colored_data = data.copy()
 
-colored_idxs = []
+# colored_idxs = []
 
-colored_img_dict = {}
+# colored_img_dict = {}
 
-for k,(x,rep) in enumerate(zip(data,data_hashes)):
-    x = np.transpose(x,(1,2,0))
+# for k,(x,rep) in enumerate(zip(data,data_hashes)):
+#     x = np.transpose(x,(1,2,0))
 
-    block_ij = np.argwhere(x[:,:,1]>100)
+#     block_ij = np.argwhere(x[:,:,1]>100)
 
-    x_min = np.min(block_ij,0)
-    x_max = np.max(block_ij,0)
+#     x_min = np.min(block_ij,0)
+#     x_max = np.max(block_ij,0)
 
-    i,j = (x_min + x_max)//2
+#     i,j = (x_min + x_max)//2
 
-    if rep not in color_hash_table:
-        color = np.array([255,255,255])
-        for idx in block_ij:
-            row,col = idx
-            colored_data[k,0,row,col] = color[0]
-            colored_data[k,1,row,col] = color[1]
-            colored_data[k,2,row,col] = color[2]
-    else:
-        colored_idxs.append(k)
+#     if rep not in color_hash_table:
+#         color = np.array([255,255,255])
+#         for idx in block_ij:
+#             row,col = idx
+#             colored_data[k,0,row,col] = color[0]
+#             colored_data[k,1,row,col] = color[1]
+#             colored_data[k,2,row,col] = color[2]
+#     else:
+#         colored_idxs.append(k)
 
 
-        color = np.array(color_hash_table[rep])
-        color_img[i,j] = color
-        for idx in block_ij:
-            row,col = idx
-            colored_data[k,0,row,col] = color[0]
-            colored_data[k,1,row,col] = color[1]
-            colored_data[k,2,row,col] = color[2]
-            color_img[row,col]=color
-
-        if rep not in colored_img_dict:
-            colored_img_dict[rep] = [colored_data[k,:,:,:]]
-        else:
-            colored_img_dict[rep].append(colored_data[k,:,:,:])
-
-# Commented out IPython magic to ensure Python compatibility.
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-# %matplotlib inline
-
-x = np.transpose(data[8],(1,2,0))
-x.shape
-
-imgplot = plt.imshow(color_img.astype(int))
-#imgplot.axes.get_xaxis().set_visible(False)
-#imgplot.axes.get_yaxis().set_visible(False)
-
-image_list = []
+#         color = np.array(color_hash_table[rep])
+#         color_img[i,j] = color
+#         for idx in block_ij:
+#             row,col = idx
+#             colored_data[k,0,row,col] = color[0]
+#             colored_data[k,1,row,col] = color[1]
+#             colored_data[k,2,row,col] = color[2]
+#             color_img[row,col]=color
+
+#         if rep not in colored_img_dict:
+#             colored_img_dict[rep] = [colored_data[k,:,:,:]]
+#         else:
+#             colored_img_dict[rep].append(colored_data[k,:,:,:])
+
+# # Commented out IPython magic to ensure Python compatibility.
+# import matplotlib.pyplot as plt
+# import matplotlib.image as mpimg
+# # %matplotlib inline
+
+# x = np.transpose(data[8],(1,2,0))
+# x.shape
+
+# imgplot = plt.imshow(color_img.astype(int))
+# #imgplot.axes.get_xaxis().set_visible(False)
+# #imgplot.axes.get_yaxis().set_visible(False)
+# plt.savefig('results/colour_coding_surface')
+
+# image_list = []
+
+# for rep_imgs in list(colored_img_dict.values()):
+#     image_list.append(torch.tensor(np.array(rep_imgs)[:4]).int())
 
-for rep_imgs in list(colored_img_dict.values()):
-    image_list.append(torch.tensor(np.array(rep_imgs)[:4]).int())
-
-x = torch.cat(image_list[:10])
-for _ in range(2):
-    display_image_grid(x)
-
-"""
-How can we build a graph from a color image?
-
-Step 1: set up
-
-- Create an index to representation map (e.g. an array of all the representations) of length N
-- Create a color to index hash table
-- Create new image representation that takes color image and replaces all RGB colors with indices
-- Create a N X N matrix of zeros
-
-Step 2: graph construction
-
-Scan the color image twice - horizontally and vertically
-
-1. start at origin pixel (0,0), mark its color
-While pixels not exhausted
-2. move one step
-3. check if color at this step is the same as previous color
-4. if color is same, skip step 5
-5. if color is different, add 1 to matrix[i][j] and matrix[j][i] where i is previous color and j is current color
-6. mark current pixel color and move on to next pixel
-
-do this twice for vertical and horizontal pixels
-"""
-
-# Step 1
-# Create an index to representation map
-# add black (None representation)
-index_rep_map = [np.array([0,0,0])]
-# add representations
-index_rep_map+=list(color_hash_table.values())
-index_rep_map = np.array(index_rep_map)
-
-# Create a color to index hash table
-color_index_hash_table = {str(v):i for i,v in enumerate(index_rep_map)}
-# Create new image representation that takes color image and replaces all RGB colors with indices
-count = 0
-# iterate over colors
-index_img = np.zeros((32,32))
-
-color_img_int = color_img.astype(int)
-for i in range(color_img_int.shape[0]):
-    for j in range(color_img_int.shape[1]):
-        color_string = str(color_img_int[i,j,:])
-        index_img[i,j] = color_index_hash_table[color_string]
-index_img = index_img.astype(int)
-
-# Step 1 graph init
-
-# Create a N X N matrix of zeros
-n = len(index_rep_map)
-graph = np.zeros((n,n)).astype(int)
-
-# Step 2
-
-# horizontal and vertical scans
-m = index_img.shape[0]
-horizontal_mark = None
-
-for i in range(m):
-    for j in range(m):
-        # horizontal scan
-        # make sure j-1 > -1
-        if j>0:
-            current_color = index_img[i][j]
-            previous_color = index_img[i][j-1]
-            if current_color != previous_color:
-                graph[current_color][previous_color]+=1
-                graph[previous_color][current_color]+=1
-        # vertical scan
-        # make sure i-1<-1
-        if i>0:
-            current_color = index_img[i][j]
-            previous_color = index_img[i-1][j]
-            if current_color != previous_color:
-                graph[current_color][previous_color]+=1
-                graph[previous_color][current_color]+=1
-
-binary_graph = graph.copy()
-binary_graph[graph>0]=1
-binary_graph_of_reps_only = binary_graph[1:,1:]
-binary_graph_of_reps_only.shape
-
-"""
-shortest path algorithm - BFS
-
-graph representation: adjacency dict
-"""
-
-from collections import deque
-
-def adjacency_matrix_to_dict(matrix):
-    n = matrix.shape[0]
-    g_dict = {k:set([]) for k in range(n)}
-
-    for i in range(n):
-        for j in range(n):
-            if matrix[i][j]:
-                g_dict[i].add(j)
-    g_dict = {k:list(v) for k,v in g_dict.items()}
-    return g_dict
-
-adjacency_list = adjacency_matrix_to_dict(binary_graph)
-
-def BFS(G,start,end):
-    #assert start in G and end in G, 'start (or) end node not in Graph'
-    #assert G[start] and G[end], 'start (or) end nodes are disjoint'
-    q = deque([])
-    q.append([start])
-
-    visited =set([start])
-    path = []
-
-    while q:
-
-        path = q.popleft()
-        node = path[-1]
-        if node == end:
-            return path
-        else:
-            for adjacent in G.get(node,[node]):
-                new_path = list(path)
-                new_path.append(adjacent)
-                q.append(new_path)
-
-    return []
-
-BFS(adjacency_list,11,12)
-
-adjacency_list
+# x = torch.cat(image_list[:10])
+# for _ in range(2):
+#     display_image_grid(x, 'colour_coding')
+
+# """
+# How can we build a graph from a color image?
+
+# Step 1: set up
+
+# - Create an index to representation map (e.g. an array of all the representations) of length N
+# - Create a color to index hash table
+# - Create new image representation that takes color image and replaces all RGB colors with indices
+# - Create a N X N matrix of zeros
+
+# Step 2: graph construction
+
+# Scan the color image twice - horizontally and vertically
+
+# 1. start at origin pixel (0,0), mark its color
+# While pixels not exhausted
+# 2. move one step
+# 3. check if color at this step is the same as previous color
+# 4. if color is same, skip step 5
+# 5. if color is different, add 1 to matrix[i][j] and matrix[j][i] where i is previous color and j is current color
+# 6. mark current pixel color and move on to next pixel
+
+# do this twice for vertical and horizontal pixels
+# """
+
+# # Step 1
+# # Create an index to representation map
+# # add black (None representation)
+# index_rep_map = [np.array([0,0,0])]
+# # add representations
+# index_rep_map+=list(color_hash_table.values())
+# index_rep_map = np.array(index_rep_map)
+
+# # Create a color to index hash table
+# color_index_hash_table = {str(v):i for i,v in enumerate(index_rep_map)}
+# # Create new image representation that takes color image and replaces all RGB colors with indices
+# count = 0
+# # iterate over colors
+# index_img = np.zeros((32,32))
+
+# color_img_int = color_img.astype(int)
+# for i in range(color_img_int.shape[0]):
+#     for j in range(color_img_int.shape[1]):
+#         color_string = str(color_img_int[i,j,:])
+#         index_img[i,j] = color_index_hash_table[color_string]
+# index_img = index_img.astype(int)
+
+# # Step 1 graph init
+
+# # Create a N X N matrix of zeros
+# n = len(index_rep_map)
+# graph = np.zeros((n,n)).astype(int)
+
+# # Step 2
+
+# # horizontal and vertical scans
+# m = index_img.shape[0]
+# horizontal_mark = None
+
+# for i in range(m):
+#     for j in range(m):
+#         # horizontal scan
+#         # make sure j-1 > -1
+#         if j>0:
+#             current_color = index_img[i][j]
+#             previous_color = index_img[i][j-1]
+#             if current_color != previous_color:
+#                 graph[current_color][previous_color]+=1
+#                 graph[previous_color][current_color]+=1
+#         # vertical scan
+#         # make sure i-1<-1
+#         if i>0:
+#             current_color = index_img[i][j]
+#             previous_color = index_img[i-1][j]
+#             if current_color != previous_color:
+#                 graph[current_color][previous_color]+=1
+#                 graph[previous_color][current_color]+=1
+
+# binary_graph = graph.copy()
+# binary_graph[graph>0]=1
+# binary_graph_of_reps_only = binary_graph[1:,1:]
+# print(binary_graph_of_reps_only.shape)
+
+# """
+# shortest path algorithm - BFS
+
+# graph representation: adjacency dict
+# """
+
+# from collections import deque
+
+# def adjacency_matrix_to_dict(matrix):
+#     n = matrix.shape[0]
+#     g_dict = {k:set([]) for k in range(n)}
+
+#     for i in range(n):
+#         for j in range(n):
+#             if matrix[i][j]:
+#                 g_dict[i].add(j)
+#     g_dict = {k:list(v) for k,v in g_dict.items()}
+#     return g_dict
+
+# adjacency_list = adjacency_matrix_to_dict(binary_graph)
+
+# def BFS(G,start,end):
+#     #assert start in G and end in G, 'start (or) end node not in Graph'
+#     #assert G[start] and G[end], 'start (or) end nodes are disjoint'
+#     q = deque([])
+#     q.append([start])
+
+#     visited =set([start])
+#     path = []
+
+#     while q:
+
+#         path = q.popleft()
+#         node = path[-1]
+#         if node == end:
+#             return path
+#         else:
+#             for adjacent in G.get(node,[node]):
+#                 new_path = list(path)
+#                 new_path.append(adjacent)
+#                 q.append(new_path)
+
+#     return []
+
+# print(BFS(adjacency_list,11,12))
+
+# print(adjacency_list)
 
 
 
