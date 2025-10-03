@@ -59,12 +59,12 @@ def load_latent_block():
     return train, val
 
 def load_hipmri():
-    data_folder_path = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data/'
+    data_folder_path = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data'
 
-    train = HipMRIDataset(data_folder_path + 'keras_slices_train', train=True,
+    train = HipMRIDataset(data_folder_path + '/keras_slices_train', train=True,
                           transform=None)
     
-    val = HipMRIDataset(data_folder_path + 'keras_slices_validate', train=False,
+    val = HipMRIDataset(data_folder_path + '/keras_slices_validate', train=False,
                         transform=None)
     return train, val
 

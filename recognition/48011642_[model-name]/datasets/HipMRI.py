@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 from torch.utils.data import Dataset
 from os import listdir
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+import matplotlib.pyplot as plt
 
 
 class HipMRIDataset(Dataset):
@@ -13,8 +16,6 @@ class HipMRIDataset(Dataset):
     def __init__(self, file_path, train=True, transform=None):
         image_names = listdir(file_path)
         data = load_data_2D(file_path, image_names)
-        data = np.array([cv2.resize(x, dsize=(
-            32, 32), interpolation=cv2.INTER_CUBIC) for x in data])
         self.data = np.expand_dims(data, axis=1)
 
         self.transform = transform

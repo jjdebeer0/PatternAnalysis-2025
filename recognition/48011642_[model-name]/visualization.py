@@ -78,11 +78,15 @@ def plot_metrics(data):
     plt.close()
 
 def display_image_grid(x, name):
-    x = make_grid(x.cpu().detach()+0.5)
+    x = x.cpu().detach()+0.5
     x = x.numpy()
-    fig = plt.imshow(np.transpose(x, (1,2,0)), interpolation='nearest')
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
+    fig = plt.figure(figsize=(8, 8))
+    cols = 8
+    rows = 4
+    for i in range(1, cols*rows + 1):
+        fig.add_subplot(rows, cols, i)
+        plt.imshow(np.transpose(x[i - 1], (1,2,0)), interpolation='nearest')
+        plt.axis('off')
     plt.savefig(f'results/{name}.png')
 
 def reconstruct(data_loader,model):
@@ -117,7 +121,7 @@ def calculate_ssim(x_val, x_recon):
     
     # default constants
     K = [0.01, 0.03]
-    L = 255; 
+    L = 255
     window_size = 11
     
     ssim_value = ssim(I1, I2, K, window_size, L)
@@ -128,7 +132,7 @@ def calculate_ssim(x_val, x_recon):
 End of utilities
 """
 
-model_filename = 'vqvae_data_thu_oct_2_16_58_57_2025.pth'
+model_filename = 'vqvae_data_fri_oct_3_01_02_35_2025.pth'
 
 model,vqvae_data = load_model(model_filename)
 
