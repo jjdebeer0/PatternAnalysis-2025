@@ -16,12 +16,9 @@ import argparse
 from models.vqvae import VQVAE
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from torchvision.utils import make_grid
 import numpy as np
-from SSIMIndex import ssim
-import cv2
+from SSIMIndex import calculate_ssim
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 # %matplotlib inline
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,25 +52,39 @@ def plot_metrics(data):
     recon_errors = savgol_filter(results["recon_errors"], 19, 5)
     perplexities = savgol_filter(results["perplexities"], 19, 5)
     loss_vals = savgol_filter(results["loss_vals"], 19, 5)
+    val_recon_errors = savgol_filter(results["val_recon_errors"], 19, 5)
+    val_loss = savgol_filter(results["val_loss_vals"], 19, 5)
+    ssim = savgol_filter(results["ssim"], 19, 5)
 
 
     f = plt.figure(figsize=(16,4))
-    ax = f.add_subplot(1,3,2)
-    ax.plot(recon_errors)
+    ax = f.add_subplot(1,4,2)
+    ax.plot(recon_errors, label='training')
+    ax.plot(val_recon_errors, label='validation')
     ax.set_yscale('log')
     ax.set_title('Reconstruction Error')
     ax.set_xlabel('iteration')
 
-    ax = f.add_subplot(1,3,3)
+    ax = f.add_subplot(1,4,4)
     ax.plot(perplexities)
     ax.set_title('Average codebook usage (perplexity).')
     ax.set_xlabel('iteration')
 
-    ax = f.add_subplot(1,3,1)
-    ax.plot(loss_vals)
+    ax = f.add_subplot(1,4,1)
+    ax.plot(loss_vals, label='training')
+    ax.plot(val_loss, label='validation')
     ax.set_yscale('log')
     ax.set_title('Overall Loss')
     ax.set_xlabel('iteration')
+
+    ax = f.add_subplot(1,4,3)
+    ax.plot(ssim)
+    ax.set_title('SSIM')
+    ax.set_xlabel('iteration')
+
+
+    ax.legend()
+
     plt.savefig("results/metrics.png")
     plt.close()
 
@@ -98,41 +109,11 @@ def reconstruct(data_loader,model):
     x_recon = model.decoder(z_q)
     return x,x_recon, z_q,e_indices
 
-def calculate_ssim(x_val, x_recon):
-    x_val = x_val.cpu().detach()+0.5
-    x_recon = x_recon.cpu().detach()+0.5
-    x_val = x_val.numpy()
-    x_recon = x_recon.numpy()
-    # opencv image load
-    I1 = np.transpose(x_val, (1,2,0))
-    I2 = np.transpose(x_recon, (1,2,0))
-    # I2 = cv2.imread('./blur.png')
-    #I2 = cv2.resize(I2, I1.shape[0:2])
-    # print(I1.shape, I2.shape) # returns (256,256,3)
-    
-    # tensors
-    I1 = torch.from_numpy(np.rollaxis(I1, 2)).float().unsqueeze(0)/255.0
-    I2 = torch.from_numpy(np.rollaxis(I2, 2)).float().unsqueeze(0)/255.0
-    # print(I1.size(), I2.size()) # returns torch([1,3,256,256])
-    
-    # tensor.autograd.Variable (Automatic differentiation variable)
-    I1 = Variable(I1, requires_grad = True)
-    I2 = Variable(I2, requires_grad = True)
-    
-    # default constants
-    K = [0.01, 0.03]
-    L = 255
-    window_size = 11
-    
-    ssim_value = ssim(I1, I2, K, window_size, L)
-    
-    print(ssim_value.data)
-
 """
 End of utilities
 """
 
-model_filename = 'vqvae_data_fri_oct_3_01_02_35_2025.pth'
+model_filename = 'vqvae_data_wed_oct_8_21_07_18_2025.pth'
 
 model,vqvae_data = load_model(model_filename)
 
@@ -140,18 +121,17 @@ model,vqvae_data = load_model(model_filename)
 """# Load dataset and loaders"""
 
 import utils
-training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders('HIPMRI', 32)
+training_data, test_data, training_loader, test_loader, x_train_var, x_test_var = utils.load_data_and_data_loaders('HIPMRI', 32, True)
 
 """# Reconstruct validation data"""
 
-x_val,x_val_recon,z_q,e_indices = reconstruct(validation_loader,model)
-print(x_val.shape)
-display_image_grid(x_val, 'validation_data')
+x_test,x_test_recon,z_q,e_indices = reconstruct(test_loader,model)
+print(x_test.shape)
+display_image_grid(x_test, 'validation_data')
 
-display_image_grid(x_val_recon, 'validation_data_reconstruction')
+display_image_grid(x_test_recon, 'validation_data_reconstruction')
 
-for i in range(x_val.size(dim=0)):
-    calculate_ssim(x_val[i], x_val_recon[i])
+print(calculate_ssim(x_test, x_test_recon))
 
 """# Smoothed Loss and Perplexity Values"""
 
@@ -195,16 +175,16 @@ def generate_samples(e_indices):
 
 def uniform_samples(model):
 
-    rand = np.random.randint(params['n_embeddings'], size=(2048, 1))
+    rand = np.random.randint(params['n_embeddings'], size=(params['batch_size']*64, 1))
     min_encoding_indices = torch.tensor(rand).long().to(device)
     x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
 
     print(min_encoding_indices.shape)
     return x_recon, z_q,e_indices
 
-x_val_recon,z_q,e_indices = uniform_samples(model)
+x_test_recon,z_q,e_indices = uniform_samples(model)
 
-display_image_grid(x_val_recon, 'uniform_sampling_of_latent_space')
+display_image_grid(x_test_recon, 'uniform_sampling_of_latent_space')
 
 """## Categorial Distribution Sampling"""
 
@@ -214,7 +194,7 @@ N = 100
 def encode_observations():
     all_e_indices = []
     for i in range(N):
-        _,_,_,e_indices = reconstruct(validation_loader,model)
+        _,_,_,e_indices = reconstruct(test_loader,model)
         all_e_indices.append(e_indices)
 
     return torch.cat(all_e_indices)
@@ -268,7 +248,7 @@ most_common_z = np.array([int(y) for y in list(hist.keys())[most_common_sample_i
 
 def most_common_samples(model):
 
-    samples = np.array(list(most_common_z)*32).reshape(-1,1)
+    samples = np.array(list(most_common_z)*params['batch_size']).reshape(-1,1)
     print(samples.shape)
     min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
     x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
@@ -276,9 +256,9 @@ def most_common_samples(model):
     return x_recon, z_q,e_indices
 
 
-x_val_recon,z_q,e_indices = most_common_samples(model)
+x_test_recon,z_q,e_indices = most_common_samples(model)
 
-display_image_grid(x_val_recon, 'most_common_representation')
+display_image_grid(x_test_recon, 'most_common_representation')
 
 # """# Reconstruct from PixelCNN"""
 
