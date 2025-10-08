@@ -15,9 +15,7 @@ class HipMRIDataset(Dataset):
 
     def __init__(self, file_path, train=True, transform=None):
         image_names = listdir(file_path)
-        data = load_data_2D(file_path, image_names)
-        self.data = np.expand_dims(data, axis=1)
-
+        self.data = load_data_2D(file_path, image_names)
         self.transform = transform
 
     def __getitem__(self, index):
