@@ -8,14 +8,24 @@
 
 from math import exp
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-import cv2
+def calculate_ssim(x_val, x_recon):
+    # tensors
+    I1 = x_val/255.0
+    I2 = x_recon/255.0
+    
+    # tensor.autograd.Variable (Automatic differentiation variable)
+    image1 = Variable(I1, requires_grad = True)
+    image2 = Variable(I2, requires_grad = True)
+    
+    # default constants
+    K = [0.01, 0.03]
+    L = 255
+    window_size = 11
 
-def ssim(image1, image2, K, window_size, L):
     _, channel1, _, _ = image1.size()
     _, channel2, _, _ = image2.size()
     channel = min(channel1, channel2)
@@ -33,6 +43,9 @@ def ssim(image1, image2, K, window_size, L):
     # C2 = (K[1]*L)**2
     C1 = K[0]**2
     C2 = K[1]**2
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    window = window.to(device)
     
     mu1 = F.conv2d(image1, window, padding = window_size//2, groups = channel)
     mu2 = F.conv2d(image2, window, padding = window_size//2, groups = channel)
@@ -47,30 +60,4 @@ def ssim(image1, image2, K, window_size, L):
 
     ssim_map = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
     
-    return ssim_map.mean()
-
-if __name__=="__main__":
-    # opencv image load
-    I1 = cv2.imread('./image.png')
-    I2 = cv2.imread('./mixed.png')
-    # I2 = cv2.imread('./blur.png')
-    I2 = cv2.resize(I2, I1.shape[0:2])
-    # print(I1.shape, I2.shape) # returns (256,256,3)
-    
-    # tensors
-    I1 = torch.from_numpy(np.rollaxis(I1, 2)).float().unsqueeze(0)/255.0
-    I2 = torch.from_numpy(np.rollaxis(I2, 2)).float().unsqueeze(0)/255.0
-    # print(I1.size(), I2.size()) # returns torch([1,3,256,256])
-    
-    # tensor.autograd.Variable (Automatic differentiation variable)
-    I1 = Variable(I1, requires_grad = True)
-    I2 = Variable(I2, requires_grad = True)
-    
-    # default constants
-    K = [0.01, 0.03]
-    L = 255; 
-    window_size = 11
-    
-    ssim_value = ssim(I1, I2, K, window_size, L)
-    
-    print(ssim_value.data)
+    return torch.mean(ssim_map, dim=1)
