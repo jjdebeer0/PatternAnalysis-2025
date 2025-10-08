@@ -5,6 +5,7 @@ import torch.optim as optim
 import argparse
 import utils
 from models.vqvae import VQVAE
+from SSIMIndex import calculate_ssim
 
 parser = argparse.ArgumentParser()
 
@@ -40,7 +41,7 @@ if args.save:
 Load data and define batch data loaders
 """
 
-training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders(
+training_data, validation_data, training_loader, validation_loader, x_train_var, x_val_var = utils.load_data_and_data_loaders(
     args.dataset, args.batch_size)
 """
 Set up VQ-VAE model with components defined in ./models/ folder
@@ -53,20 +54,24 @@ model = VQVAE(args.n_hiddens, args.n_residual_hiddens,
 Set up optimizer and training loop
 """
 optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
 
-model.train()
 
 results = {
     'n_updates': 0,
     'recon_errors': [],
     'loss_vals': [],
     'perplexities': [],
+    'val_loss_vals': [],
+    'val_recon_errors': [],
+    'ssim': []
 }
 
 
 def train():
 
     for i in range(args.n_updates):
+        model.train()
         (x, _) = next(iter(training_loader))
         x = x.to(device)
         optimizer.zero_grad()
@@ -82,6 +87,18 @@ def train():
         results["perplexities"].append(perplexity.cpu().detach().numpy())
         results["loss_vals"].append(loss.cpu().detach().numpy())
         results["n_updates"] = i
+
+        model.eval()
+        with torch.no_grad():
+            (v, _) = next(iter(validation_loader))
+            v = v.to(device)
+            val_embedding_loss, v_hat, _ = model(v)
+            val_recon_loss = torch.mean((v_hat - v)**2) / x_val_var
+            val_loss = val_recon_loss + val_embedding_loss
+            ssim = torch.mean(calculate_ssim(v, v_hat))
+            results["val_recon_errors"].append(val_recon_loss.cpu().detach().numpy())
+            results["val_loss_vals"].append(val_loss.cpu().detach().numpy())
+            results["ssim"].append(ssim.cpu().detach().numpy())
 
         if i % args.log_interval == 0:
             """
