@@ -32,6 +32,7 @@ class Decoder(nn.Module):
                                kernel_size=kernel, stride=stride, padding=1),
             nn.BatchNorm2d(h_dim // 2),
             nn.ReLU(),
+            nn.Dropout2d(0.2),
             nn.ConvTranspose2d(h_dim//2, 1, kernel_size=kernel,
                                stride=stride, padding=1)
         )

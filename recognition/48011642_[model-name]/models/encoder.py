@@ -30,10 +30,12 @@ class Encoder(nn.Module):
                       stride=stride, padding=1),
             nn.BatchNorm2d(h_dim // 2),
             nn.ReLU(),
+            nn.Dropout2d(0.2),
             nn.Conv2d(h_dim // 2, h_dim, kernel_size=kernel,
                       stride=stride, padding=1),
             nn.BatchNorm2d(h_dim),
             nn.ReLU(),
+            nn.Dropout2d(0.2),
             nn.Conv2d(h_dim, h_dim, kernel_size=kernel-1,
                       stride=stride-1, padding=1),
             ResidualStack(
