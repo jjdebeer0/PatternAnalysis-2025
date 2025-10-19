@@ -1,11 +1,10 @@
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import argparse
 import utils
-from models.vqvae import VQVAE
-from SSIMIndex import calculate_ssim
+from modules import VQVAE
+from ssimindex import calculate_ssim
 
 parser = argparse.ArgumentParser()
 

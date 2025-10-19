@@ -3,7 +3,7 @@ import torchvision.transforms.v2 as transforms
 from torch.utils.data import DataLoader
 import time
 import os
-from datasets.HipMRI import HipMRIDataset
+from dataset import HipMRIDataset
 import numpy as np
 
 def load_hipmri(test):
@@ -64,7 +64,7 @@ def readable_timestamp():
 
 
 def save_model_and_results(model, results, hyperparameters, timestamp):
-    SAVE_MODEL_PATH = os.getcwd() + '/results'
+    SAVE_MODEL_PATH = os.getcwd()
 
     results_to_save = {
         'model': model.state_dict(),

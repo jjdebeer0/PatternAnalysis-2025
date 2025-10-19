@@ -12,10 +12,10 @@ Original file is located at
 # Commented out IPython magic to ensure Python compatibility.
 import os
 import torch
-from models.vqvae import VQVAE
+from modules import VQVAE
 import matplotlib.pyplot as plt
 import numpy as np
-from SSIMIndex import calculate_ssim
+from ssimindex import calculate_ssim
 
 # %matplotlib inline
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,7 +25,7 @@ Utility functions
 """
 
 def load_model(model_filename):
-    path = os.getcwd() + '/results/'
+    path = os.getcwd()
 
     if torch.cuda.is_available():
         data = torch.load(path + model_filename,weights_only=False)
@@ -82,7 +82,7 @@ def plot_metrics(data):
 
     ax.legend()
 
-    plt.savefig("results/metrics.png")
+    plt.savefig("metrics.png")
     plt.close()
 
 def display_image_grid(x, name, labels=None):
@@ -99,7 +99,7 @@ def display_image_grid(x, name, labels=None):
         ax.set_title(label)
         plt.imshow(np.transpose(x[i - 1], (1,2,0)), interpolation='nearest')
         plt.axis('off')
-    plt.savefig(f'results/{name}.png')
+    plt.savefig(f'{name}.png')
 
 def reconstruct(data_loader,model):
     (x, _) = next(iter(data_loader))
@@ -113,7 +113,7 @@ def reconstruct(data_loader,model):
 End of utilities
 """
 
-model_filename = 'vqvae_data_sat_oct_18_13_48_18_2025.pth'
+model_filename = '/vqvae_data_sun_oct_19_22_46_34_2025.pth'
 
 model,vqvae_data = load_model(model_filename)
 
@@ -121,12 +121,11 @@ model,vqvae_data = load_model(model_filename)
 """# Load dataset and loaders"""
 
 import utils
-training_data, test_data, training_loader, test_loader, x_train_var, x_test_var = utils.load_data_and_data_loaders('HIPMRI', 32, True)
+training_data, test_data, training_loader, test_loader, x_train_var, x_test_var = utils.load_data_and_data_loaders(32, True)
 
 """# Reconstruct validation data"""
 
 x_test,x_test_recon = reconstruct(test_loader,model)
-print(x_test.shape)
 display_image_grid(x_test, 'validation_data')
 
 labels = []
