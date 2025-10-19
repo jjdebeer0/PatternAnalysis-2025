@@ -12,13 +12,10 @@ Original file is located at
 # Commented out IPython magic to ensure Python compatibility.
 import os
 import torch
-import argparse
 from models.vqvae import VQVAE
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import numpy as np
 from SSIMIndex import calculate_ssim
-import torch.nn.functional as F
 
 # %matplotlib inline
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -88,14 +85,18 @@ def plot_metrics(data):
     plt.savefig("results/metrics.png")
     plt.close()
 
-def display_image_grid(x, name):
+def display_image_grid(x, name, labels=None):
     x = x.cpu().detach()+0.5
     x = x.numpy()
     fig = plt.figure(figsize=(8, 8))
     cols = 8
     rows = 4
     for i in range(1, cols*rows + 1):
-        fig.add_subplot(rows, cols, i)
+        label = ""
+        if labels is not None:
+            label = labels[i - 1]
+        ax = fig.add_subplot(rows, cols, i)
+        ax.set_title(label)
         plt.imshow(np.transpose(x[i - 1], (1,2,0)), interpolation='nearest')
         plt.axis('off')
     plt.savefig(f'results/{name}.png')
@@ -103,17 +104,16 @@ def display_image_grid(x, name):
 def reconstruct(data_loader,model):
     (x, _) = next(iter(data_loader))
     x = x.to(device)
-    vq_encoder_output = model.pre_quantization_conv(model.encoder(x))
-    _, z_q, _, _,e_indices = model.vector_quantization(vq_encoder_output)
-
-    x_recon = model.decoder(z_q)
-    return x,x_recon, z_q,e_indices
+    model.eval()
+    with torch.no_grad():
+        _, x_recon, _ = model(x)
+    return x,x_recon
 
 """
 End of utilities
 """
 
-model_filename = 'vqvae_data_wed_oct_8_21_07_18_2025.pth'
+model_filename = 'vqvae_data_sat_oct_18_13_48_18_2025.pth'
 
 model,vqvae_data = load_model(model_filename)
 
@@ -125,543 +125,18 @@ training_data, test_data, training_loader, test_loader, x_train_var, x_test_var 
 
 """# Reconstruct validation data"""
 
-x_test,x_test_recon,z_q,e_indices = reconstruct(test_loader,model)
+x_test,x_test_recon = reconstruct(test_loader,model)
 print(x_test.shape)
 display_image_grid(x_test, 'validation_data')
 
-display_image_grid(x_test_recon, 'validation_data_reconstruction')
+labels = []
+for i in range(32):
+    x_t = torch.unsqueeze(x_test[i], dim=0)
+    x_r = torch.unsqueeze(x_test_recon[i], dim=0)
+    labels.append(round(calculate_ssim(x_t, x_r), 3))
 
-print(calculate_ssim(x_test, x_test_recon))
+display_image_grid(x_test_recon, 'validation_data_reconstruction', labels)
 
 """# Smoothed Loss and Perplexity Values"""
 
 plot_metrics(vqvae_data)
-
-"""# Sampling from latent space $z$
-
-Sampling from VQ VAEs is more subtle than normal sampling schemes. To elucidate this point we'll present three sampling schemes:
-
-1. Uniform sampling
-2. Categorical sampling from a histogram
-3. Sampling with an autoregressive PixelCNN
-
-Sampling scheme (1) produces scrambled results, because only a small percentage of all possible representations are actually utilized. If you sample uniformly, you will most likely get results outside of the data distribution, which is why they appear random.
-
-Sampling scheme (2) collects a histogram of representations and samples from the histogram. This works but is also incorrect because it limits us to only representations seen during construction of the histogram. Note that if $N_{\text{histogram}} \rightarrow \infty $ then this scheme will work, but since we can't actually do this, we want a better way to approximate the disribution of our representation space.
-
-Scheme (3) is more complex but provides a principled way of sampling from the latent space. We train a Gated PixelCNN to approximate the distribution of the latent space.
-
-
-"""
-
-params = vqvae_data['hyperparameters']
-params
-
-"""## Uniform sampling of latent space
-
-
-"""
-
-def generate_samples(e_indices):
-    min_encodings = torch.zeros(e_indices.shape[0], params['n_embeddings']).to(device)
-    min_encodings.scatter_(1, e_indices, 1)
-    e_weights = model.vector_quantization.embedding.weight
-    z_q = torch.matmul(min_encodings, e_weights).view((params["batch_size"],8,8,params["embedding_dim"]))
-    z_q = z_q.permute(0, 3, 1, 2).contiguous()
-
-    x_recon = model.decoder(z_q)
-    return x_recon, z_q,e_indices
-
-
-def uniform_samples(model):
-
-    rand = np.random.randint(params['n_embeddings'], size=(params['batch_size']*64, 1))
-    min_encoding_indices = torch.tensor(rand).long().to(device)
-    x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
-
-    print(min_encoding_indices.shape)
-    return x_recon, z_q,e_indices
-
-x_test_recon,z_q,e_indices = uniform_samples(model)
-
-display_image_grid(x_test_recon, 'uniform_sampling_of_latent_space')
-
-"""## Categorial Distribution Sampling"""
-
-N = 100
-
-
-def encode_observations():
-    all_e_indices = []
-    for i in range(N):
-        _,_,_,e_indices = reconstruct(test_loader,model)
-        all_e_indices.append(e_indices)
-
-    return torch.cat(all_e_indices)
-
-e_indices = encode_observations()
-
-def count_representations():
-    d = {}
-    for i in range(32*N):
-        k = e_indices[64*i:64*i+64].squeeze().cpu().detach().numpy()
-        k = [str(j)+'-' for j in k]
-        k = ''.join(k)
-
-        if k not in d:
-            d[k] = 1
-        else:
-            d[k]+=1
-
-    return d
-
-hist = count_representations()
-if '' in hist: del hist['']
-
-print('Total representations used:',len(hist.keys()))
-def sample_histogram(hist):
-    keys, vals = np.array(list(hist.keys())),np.array(list(hist.values()))
-    probs = np.array(vals)/sum(vals)
-    samples = np.random.choice(keys,params['batch_size'],p=probs,replace=True)
-
-    samples = np.array([np.array([int(y) for y in x.split('-')[:-1]]) for x in samples])
-
-    return samples
-
-samples = sample_histogram(hist)
-
-def histogram_samples(model):
-    min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
-    x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
-
-    return x_recon, z_q,e_indices
-
-x_hist,_,_ = histogram_samples(model)
-
-display_image_grid(x_hist, 'categorical_distribution_sampling')
-
-"""## The most common representation"""
-
-most_common_sample_index = np.argmax(list(hist.values()))
-most_common_z = np.array([int(y) for y in list(hist.keys())[most_common_sample_index].split('-')[:-1]])
-
-
-def most_common_samples(model):
-
-    samples = np.array(list(most_common_z)*params['batch_size']).reshape(-1,1)
-    print(samples.shape)
-    min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
-    x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
-
-    return x_recon, z_q,e_indices
-
-
-x_test_recon,z_q,e_indices = most_common_samples(model)
-
-display_image_grid(x_test_recon, 'most_common_representation')
-
-# """# Reconstruct from PixelCNN"""
-
-# import os
-# data_folder_path = os.getcwd()
-# data_file_path = data_folder_path + '/data/latent_samples.npy'
-
-# samples = np.load(data_file_path,allow_pickle=True)
-
-# def reconstruct_from_pixelcnn(model,samples):
-
-
-#     min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
-#     x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
-
-#     return x_recon, z_q,e_indices
-
-
-# x_val_recon,z_q,e_indices = reconstruct_from_pixelcnn(model,samples)
-
-# display_image_grid(x_val_recon, 'pixelcnn_reconstruction')
-
-# """# Color coding
-
-# 1. load all data
-# 2. compute COM for all data
-# 3. get representation indices for all data and hash them
-# 4. organize all data by index for steps 1-3
-# 5. build unique color scheme for all used representations
-# 6. iterate through hash values and color the COM pixel with hash values
-
-# display resulting image
-# """
-
-# import random
-# import seaborn as sns
-
-# def encode_data(data,model):
-#     x = data.data # assumes youre using Pytorch formatted dataset
-#     x = torch.tensor(x).float().to(device)
-#     x = x.permute(0,3,1,2).contiguous()
-#     x = x.to(device)
-#     vq_encoder_output = model.pre_quantization_conv(model.encoder(x))
-#     _, z_q, _, _,e_indices = model.vector_quantization(vq_encoder_output)
-
-#     x_recon = model.decoder(z_q)
-#     return x,x_recon, z_q,e_indices
-
-# def count_and_hash_representations(e_indices,prune=2):
-#     x_hashes = []
-#     d = {}
-#     n = int(len(e_indices)/64)
-#     for i in range(n):
-#         k = e_indices[64*i:64*i+64].squeeze().cpu().detach().numpy()
-#         hash_ = hash(tuple(k))
-
-#         if hash_ not in d:
-#             d[hash_] = 1
-#         else:
-#             d[hash_]+=1
-
-#         x_hashes.append(hash_)
-
-#     # prune hash table
-#     d = dict((k, v) for k, v in d.items() if v >= prune)
-
-#     return d,x_hashes
-
-
-# def create_color_template(n):
-#     num_shades = n
-#     if n < 1000:
-#         sns.palplot(sns.husl_palette(num_shades))
-#         color_list = sns.husl_palette(num_shades)
-#     else:
-#         sns.palplot(sns.cubehelix_palette(num_shades))
-#         color_list = sns.cubehelix_palette(num_shades)
-
-
-#     rgb_list = []
-#     for color in color_list:
-#         rgb = []
-#         for value in color:
-#             value *= 255
-#             rgb.append(int(value))
-#         rgb_list.append(np.array(rgb).astype(int))
-
-#     return rgb_list
-
-# from collections import Counter
-
-# PRUNE = 0
-# N_TOP_REPS = 500
-
-# # get data and discrete indices
-# data,_,_,e_indices = encode_data(training_data,model)
-
-# # create a hash table with most common representations
-# d, data_hashes = count_and_hash_representations(e_indices,PRUNE)
-
-# d = dict(Counter(d).most_common(N_TOP_REPS))
-
-# # count num of reps
-# n = len(d.keys())
-# print(n)
-# colors = create_color_template(n)
-# color_hash_table = {k:v for k,v in zip(d.keys(),colors)}
-
-# data = data.cpu().detach().numpy()
-
-
-# color_img = np.zeros((32,32,3))
-
-# colored_data = data.copy()
-
-# colored_idxs = []
-
-# colored_img_dict = {}
-
-# for k,(x,rep) in enumerate(zip(data,data_hashes)):
-#     x = np.transpose(x,(1,2,0))
-
-#     block_ij = np.argwhere(x[:,:,1]>100)
-
-#     x_min = np.min(block_ij,0)
-#     x_max = np.max(block_ij,0)
-
-#     i,j = (x_min + x_max)//2
-
-#     if rep not in color_hash_table:
-#         color = np.array([255,255,255])
-#         for idx in block_ij:
-#             row,col = idx
-#             colored_data[k,0,row,col] = color[0]
-#             colored_data[k,1,row,col] = color[1]
-#             colored_data[k,2,row,col] = color[2]
-#     else:
-#         colored_idxs.append(k)
-
-
-#         color = np.array(color_hash_table[rep])
-#         color_img[i,j] = color
-#         for idx in block_ij:
-#             row,col = idx
-#             colored_data[k,0,row,col] = color[0]
-#             colored_data[k,1,row,col] = color[1]
-#             colored_data[k,2,row,col] = color[2]
-#             color_img[row,col]=color
-
-#         if rep not in colored_img_dict:
-#             colored_img_dict[rep] = [colored_data[k,:,:,:]]
-#         else:
-#             colored_img_dict[rep].append(colored_data[k,:,:,:])
-
-# # Commented out IPython magic to ensure Python compatibility.
-# import matplotlib.pyplot as plt
-# import matplotlib.image as mpimg
-# # %matplotlib inline
-
-# x = np.transpose(data[8],(1,2,0))
-# x.shape
-
-# imgplot = plt.imshow(color_img.astype(int))
-# #imgplot.axes.get_xaxis().set_visible(False)
-# #imgplot.axes.get_yaxis().set_visible(False)
-# plt.savefig('results/colour_coding_surface')
-
-# image_list = []
-
-# for rep_imgs in list(colored_img_dict.values()):
-#     image_list.append(torch.tensor(np.array(rep_imgs)[:4]).int())
-
-# x = torch.cat(image_list[:10])
-# for _ in range(2):
-#     display_image_grid(x, 'colour_coding')
-
-# """
-# How can we build a graph from a color image?
-
-# Step 1: set up
-
-# - Create an index to representation map (e.g. an array of all the representations) of length N
-# - Create a color to index hash table
-# - Create new image representation that takes color image and replaces all RGB colors with indices
-# - Create a N X N matrix of zeros
-
-# Step 2: graph construction
-
-# Scan the color image twice - horizontally and vertically
-
-# 1. start at origin pixel (0,0), mark its color
-# While pixels not exhausted
-# 2. move one step
-# 3. check if color at this step is the same as previous color
-# 4. if color is same, skip step 5
-# 5. if color is different, add 1 to matrix[i][j] and matrix[j][i] where i is previous color and j is current color
-# 6. mark current pixel color and move on to next pixel
-
-# do this twice for vertical and horizontal pixels
-# """
-
-# # Step 1
-# # Create an index to representation map
-# # add black (None representation)
-# index_rep_map = [np.array([0,0,0])]
-# # add representations
-# index_rep_map+=list(color_hash_table.values())
-# index_rep_map = np.array(index_rep_map)
-
-# # Create a color to index hash table
-# color_index_hash_table = {str(v):i for i,v in enumerate(index_rep_map)}
-# # Create new image representation that takes color image and replaces all RGB colors with indices
-# count = 0
-# # iterate over colors
-# index_img = np.zeros((32,32))
-
-# color_img_int = color_img.astype(int)
-# for i in range(color_img_int.shape[0]):
-#     for j in range(color_img_int.shape[1]):
-#         color_string = str(color_img_int[i,j,:])
-#         index_img[i,j] = color_index_hash_table[color_string]
-# index_img = index_img.astype(int)
-
-# # Step 1 graph init
-
-# # Create a N X N matrix of zeros
-# n = len(index_rep_map)
-# graph = np.zeros((n,n)).astype(int)
-
-# # Step 2
-
-# # horizontal and vertical scans
-# m = index_img.shape[0]
-# horizontal_mark = None
-
-# for i in range(m):
-#     for j in range(m):
-#         # horizontal scan
-#         # make sure j-1 > -1
-#         if j>0:
-#             current_color = index_img[i][j]
-#             previous_color = index_img[i][j-1]
-#             if current_color != previous_color:
-#                 graph[current_color][previous_color]+=1
-#                 graph[previous_color][current_color]+=1
-#         # vertical scan
-#         # make sure i-1<-1
-#         if i>0:
-#             current_color = index_img[i][j]
-#             previous_color = index_img[i-1][j]
-#             if current_color != previous_color:
-#                 graph[current_color][previous_color]+=1
-#                 graph[previous_color][current_color]+=1
-
-# binary_graph = graph.copy()
-# binary_graph[graph>0]=1
-# binary_graph_of_reps_only = binary_graph[1:,1:]
-# print(binary_graph_of_reps_only.shape)
-
-# """
-# shortest path algorithm - BFS
-
-# graph representation: adjacency dict
-# """
-
-# from collections import deque
-
-# def adjacency_matrix_to_dict(matrix):
-#     n = matrix.shape[0]
-#     g_dict = {k:set([]) for k in range(n)}
-
-#     for i in range(n):
-#         for j in range(n):
-#             if matrix[i][j]:
-#                 g_dict[i].add(j)
-#     g_dict = {k:list(v) for k,v in g_dict.items()}
-#     return g_dict
-
-# adjacency_list = adjacency_matrix_to_dict(binary_graph)
-
-# def BFS(G,start,end):
-#     #assert start in G and end in G, 'start (or) end node not in Graph'
-#     #assert G[start] and G[end], 'start (or) end nodes are disjoint'
-#     q = deque([])
-#     q.append([start])
-
-#     visited =set([start])
-#     path = []
-
-#     while q:
-
-#         path = q.popleft()
-#         node = path[-1]
-#         if node == end:
-#             return path
-#         else:
-#             for adjacent in G.get(node,[node]):
-#                 new_path = list(path)
-#                 new_path.append(adjacent)
-#                 q.append(new_path)
-
-#     return []
-
-# print(BFS(adjacency_list,11,12))
-
-# print(adjacency_list)
-
-
-
-"""
-ASIDE: what's a better way to construct a graph?
-
-Currently, using the color image as ground truth is a bad a idea because it is a lossy representation of actual
-connections.
-
-The best way to build a graph is to run VQ VAE on data and keep track of transitions
-
-e.g. each time z_i -> z_j and i != j, hash the representation and +=1 in some monster adjacency dictionary
-to keep the representations fixed, you can pick to N reps and then only count if the transition is in one of those
-reps
-"""
-
-"""
-Run local policy with a reward specified from global policy
-
-Given start observation o_1 and end observation o_2, construct plan with graph
-
-E.g.
-suppose o_1 -> z_7 and o_2 -> z_9 construct graph z_7 -> z_0 -> z_1 -> z_9
-and then train goal conditioned policy that needs to solve curriculum
-pi(a|o,z_goal) where z_goal = z_0 then z_1 and then z_9 depending on which current z_j you're in
-
-
-"""
-
-"""
-What kind of policy should we run?
-
-Off-policy:
-
-In the off-policy case, we can collect a bunch of data (i.e. the space will be explored), we can then
-- collect a replay buffer of observations
-- then train a VQ VAE
-- then create a replay buffer with latents
-- then learn a goal conditioned policy
-
-How do we learn goal conditioned policies? Try the HER thing
-
-HER thing: input concatenated state || goal and train policy that way
-
-how does it work with representation learning?
-
-- after each trajectory (z_1,_z_1,z_17,z_5,z_5, etc) relabel as though agent was trying to achieve
-some latent state in the trajectory (e.g. z_j) and store transitions (z_i || z_j) in the replay buffer
-
-(Notes:
-- by the way you can go through ALL the representations achieved
-- maybe best to just reward the final latent observation so that it is always forward thinking
-)
-- after this policy is trained it should be able to arrive at any latent goal state z_i
-
-how do we treat representations - i.e. use entire matrix or an encoding?
-
-
-PLAN:
-
-Try with Block world.
-- Train VQ VAE on random block world
-- Train HER on latent representation
-    - flatten the 8x8 latent image into a 64 dim vector
-- Optional: provide .1 points for moving to different representation than current one, and 1 point for moving to
-  HER representation
-- use DDPG or TD3 variant (continuous actions)
-- At test time make a plan z_1 - z_2 - z_N and have agent reach each goal individually
-- Retrain VQ VAE periodically, and reconstruct graph
-
-options for reward relabling
-
-option 1: teach agent to reach any goal
-1. train time - normal HER
-2. test time - make a plan z_1 -> z_2 ... -> z_g and have policy follow plan
-
-option 2: teach agent to reach goal sequence
-1. train time - pick random future goal like in HER, find graph to said goal in path and reward path states
-2. test time - same as (2) previously
-
-option 1 is simpler let's do that
-
-
-
-
-FUTURE:
-
-train in robotic simulators e.g. fetch reach
-"""
-
-"""
-how do we make a better / cleaner graph?
-
-first, run a VQ VAE over the data and construct the graph from transitions NOT from the final color image
-
-we can choose N representations put them in set S and run the VQ VAE over the data
-then if the encoding is inside the set S, we keep it, if not we set it to the null encoding
-
-
-"""
