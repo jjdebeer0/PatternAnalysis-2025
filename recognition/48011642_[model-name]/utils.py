@@ -1,62 +1,10 @@
 import torch
-import torchvision.datasets as datasets
 import torchvision.transforms.v2 as transforms
 from torch.utils.data import DataLoader
 import time
 import os
-from datasets.block import BlockDataset, LatentBlockDataset
 from datasets.HipMRI import HipMRIDataset
 import numpy as np
-
-
-def load_cifar():
-    train = datasets.CIFAR10(root="data", train=True, download=True,
-                             transform=transforms.Compose([
-                                 transforms.ToTensor(),
-                                 transforms.Normalize(
-                                     (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                             ]))
-
-    val = datasets.CIFAR10(root="data", train=False, download=True,
-                           transform=transforms.Compose([
-                               transforms.ToTensor(),
-                               transforms.Normalize(
-                                   (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                           ]))
-    return train, val
-
-
-def load_block():
-    data_folder_path = os.getcwd()
-    data_file_path = data_folder_path + \
-        '/data/randact_traj_length_100_n_trials_1000_n_contexts_1.npy'
-
-    train = BlockDataset(data_file_path, train=True,
-                         transform=transforms.Compose([
-                             transforms.ToTensor(),
-                             transforms.Normalize(
-                                 (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                         ]))
-
-    val = BlockDataset(data_file_path, train=False,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize(
-                               (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                       ]))
-    return train, val
-
-def load_latent_block():
-    data_folder_path = os.getcwd()
-    data_file_path = data_folder_path + \
-        '/data/latent_e_indices.npy'
-
-    train = LatentBlockDataset(data_file_path, train=True,
-                         transform=None)
-
-    val = LatentBlockDataset(data_file_path, train=False,
-                       transform=None)
-    return train, val
 
 def load_hipmri(test):
     data_folder_path = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data'
@@ -64,16 +12,15 @@ def load_hipmri(test):
     transform_train = transforms.Compose([
         transforms.ToImage(),
         transforms.ToDtype(torch.float32, scale=True),
-        transforms.RandomResizedCrop(size=(256, 128), antialias=True),
-        transforms.RandomHorizontalFlip(p=0.5),
-        #transforms.Normalize(mean=[0.5], std=[0.5])
+        transforms.Resize((128, 64)),
+        transforms.Normalize(mean=[0.28], std=[0.28])
     ])
 
     transform_eval = transforms.Compose([
-                transforms.ToImage(),
-                transforms.ToDtype(torch.float32, scale=True),
-                #transforms.Normalize(mean=[0.5], std=[0.5])
-            ])
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float32, scale=True),
+        transforms.Normalize(mean=[0.28], std=[0.28])
+    ])
     
     if test:
         val = HipMRIDataset(data_folder_path + '/keras_slices_test', train=False,
@@ -83,7 +30,7 @@ def load_hipmri(test):
                         transform=transform_eval)
 
     train = HipMRIDataset(data_folder_path + '/keras_slices_train', train=True,
-                          transform=transform_train)
+                        transform=transform_train)
     
     return train, val
 
@@ -101,39 +48,12 @@ def data_loaders(train_data, val_data, batch_size):
     return train_loader, val_loader
 
 
-def load_data_and_data_loaders(dataset, batch_size, test=False):
-    if dataset == 'CIFAR10':
-        training_data, validation_data = load_cifar()
-        training_loader, validation_loader = data_loaders(
-            training_data, validation_data, batch_size)
-        x_train_var = np.var(training_data.data / 255.0)
-        x_val_var = np.var(validation_data.data / 255.0)
-
-    elif dataset == 'BLOCK':
-        training_data, validation_data = load_block()
-        training_loader, validation_loader = data_loaders(
-            training_data, validation_data, batch_size)
-
-        x_train_var = np.var(training_data.data / 255.0)
-        x_val_var = np.var(validation_data.data / 255.0)
-    elif dataset == 'LATENT_BLOCK':
-        training_data, validation_data = load_latent_block()
-        training_loader, validation_loader = data_loaders(
-            training_data, validation_data, batch_size)
-
-        x_train_var = np.var(training_data.data)
-        x_val_var = np.var(validation_data.data)
-    
-    elif dataset == 'HIPMRI':
-        training_data, validation_data = load_hipmri(test)
-        training_loader, validation_loader = data_loaders(
-            training_data, validation_data, batch_size)
-        x_train_var = np.var(training_data.data / 255.0)
-        x_val_var = np.var(validation_data.data / 255.0)
-
-    else:
-        raise ValueError(
-            'Invalid dataset: only CIFAR10 and BLOCK datasets are supported.')
+def load_data_and_data_loaders(batch_size, test=False):    
+    training_data, validation_data = load_hipmri(test)
+    training_loader, validation_loader = data_loaders(
+        training_data, validation_data, batch_size)
+    x_train_var = np.var(training_data.data / 255.0)
+    x_val_var = np.var(validation_data.data / 255.0)
 
     return training_data, validation_data, training_loader, validation_loader, x_train_var, x_val_var
 
