@@ -24,7 +24,7 @@ def load_data(batch_size, folder, transform):
 
     Args:
         batch_size (int): Batch size for data loader
-        folder (string): Path of folder containing specific data split
+        folder (str): Path of folder containing specific data split
         transform (transforms.Compose()): Transformations to apply to data
 
     Returns:
@@ -78,8 +78,8 @@ def load_data_2D(path, image_names, dtype=np.float32):
     """Load 2D medical images from list of names and return a 3D array
 
     Args:
-        path (string): absolute path to images 
-        image_names (string): list of image names
+        path (str): absolute path to images 
+        image_names (str): list of image names
         dtype (np.type): data type of returned list
     
     Returns:
