@@ -1,23 +1,40 @@
+"""
+File: modules.py
+Author: Jules de Beer
+Last modified: 2025-10-26
+Adapted from https://github.com/MishaLaskin/vqvae
 
+Description: file for components of vqvae including
+    - ResidualLayer
+    - ResidualStack
+    - VectorQuantizer
+    - Encoder
+    - Decoder
+    - VQVAE
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class ResidualLayer(nn.Module):
-    """
-    One residual layer inputs:
-    - in_dim : the input dimension
-    - h_dim : the hidden layer dimension
-    - res_h_dim : the hidden dimension of the residual block
+    """Custom Module class for ResidualLayer
+
+    Args:
+        in_dim (int): input dimensions
+        h_dim (int): hidden layer dimensions
+        res_h_dim (int): hidden dimension of residual block
     """
 
     def __init__(self, in_dim, h_dim, res_h_dim):
         super(ResidualLayer, self).__init__()
+
         self.res_block = nn.Sequential(
             nn.BatchNorm2d(in_dim),
             nn.ReLU(True),
             nn.Dropout2d(0.2),
-            nn.Conv2d(in_dim, res_h_dim, kernel_size=3,
+            nn.Conv2d(in_dim, res_h_dim, kernel_size=3, 
                       stride=1, padding=1, bias=False),
             nn.BatchNorm2d(res_h_dim),
             nn.ReLU(True),
@@ -30,14 +47,14 @@ class ResidualLayer(nn.Module):
         x = x + self.res_block(x)
         return x
 
-
 class ResidualStack(nn.Module):
-    """
-    A stack of residual layers inputs:
-    - in_dim : the input dimension
-    - h_dim : the hidden layer dimension
-    - res_h_dim : the hidden dimension of the residual block
-    - n_res_layers : number of layers to stack
+    """Custom module class of ResidualStack (stack of residual layers)
+
+    Args:
+        in_dim (int): input dimension
+        h_dim (int): hidden layer dimension
+        res_h_dim (int): hidden dimension of residual block
+        n_res_layers (int): number of layers in stack
     """
 
     def __init__(self, in_dim, h_dim, res_h_dim, n_res_layers):
@@ -52,16 +69,16 @@ class ResidualStack(nn.Module):
         x = F.relu(x)
         return x
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 class VectorQuantizer(nn.Module):
-    """
-    Discretization bottleneck part of the VQ-VAE.
+    """Custom Module class for VectorQuantiser 
 
-    Inputs:
-    - n_e : number of embeddings
-    - e_dim : dimension of embedding
-    - beta : commitment cost used in loss term, beta * ||z_e(x)-sg[e]||^2
+    Discretization bottleneck of the VQ-VAE.
+
+    Args:
+        n_e: number of embeddings
+        e_dim: dimension of embedding
+        beta: weight of commitment loss in loss term
+            beta * ||z_e(x)-sg[e]||^2
     """
 
     def __init__(self, n_e, e_dim, beta):
@@ -74,25 +91,24 @@ class VectorQuantizer(nn.Module):
         self.embedding.weight.data.uniform_(-1.0 / self.n_e, 1.0 / self.n_e)
 
     def forward(self, z):
+        """Takes output of encoder, z, and maps it to discrete one-hot vector that is the index of
+        the closest embedding vector e_j
+
+        Args:
+            z (tensor): continuous, 4D array of shape (B, C, H, W)
+        
+        Returns:
+            float: embedding loss (k-clustering loss + commitment loss)
+            tensor: z_q, discrete, 4D array of shape (B, C, H, W)
+            float: perplexity, a measure of codebook usage (high perplexity, more indices used)
+            tensor: closest encodings
+            tensor: indices of closest encodings
         """
-        Inputs the output of the encoder network z and maps it to a discrete 
-        one-hot vector that is the index of the closest embedding vector e_j
-
-        z (continuous) -> z_q (discrete)
-
-        z.shape = (batch, channel, height, width)
-
-        quantization pipeline:
-
-            1. get encoder input (B,C,H,W)
-            2. flatten input to (B*H*W,C)
-
-        """
-        # reshape z -> (batch, height, width, channel) and flatten
+        # reshape and flattent z -> (B, C, H, W) -> (B*H*W, C)
         z = z.permute(0, 2, 3, 1).contiguous()
         z_flattened = z.view(-1, self.e_dim)
-        # distances from z to embeddings e_j (z - e)^2 = z^2 + e^2 - 2 e * z
 
+        # distances from z to embeddings e_j, (z - e)^2 = z^2 + e^2 - 2 e * z
         d = torch.sum(z_flattened ** 2, dim=1, keepdim=True) + \
             torch.sum(self.embedding.weight**2, dim=1) - 2 * \
             torch.matmul(z_flattened, self.embedding.weight.t())
@@ -123,24 +139,21 @@ class VectorQuantizer(nn.Module):
         return loss, z_q, perplexity, min_encodings, min_encoding_indices
 
 class Encoder(nn.Module):
-    """
-    This is the q_theta (z|x) network. Given a data sample x q_theta 
-    maps to the latent space x -> z.
-
-    For a VQ VAE, q_theta outputs parameters of a categorical distribution.
-
-    Inputs:
-    - in_dim : the input dimension
-    - h_dim : the hidden layer dimension
-    - res_h_dim : the hidden dimension of the residual block
-    - n_res_layers : number of layers to stack
-
+    """Custom Module class for Encoder network.
+    
+    Args:
+        in_dim (int): input dimension
+        h_dim (int): hidden layer dimension
+        res_h_dim (int): hidden dimension of residual block
+        n_res_layers (int): number of layers in residual stack
     """
 
     def __init__(self, in_dim, h_dim, n_res_layers, res_h_dim):
         super(Encoder, self).__init__()
+
         kernel = 4
         stride = 2
+
         self.conv_stack = nn.Sequential(
             nn.Conv2d(in_dim, h_dim // 2, kernel_size=kernel,
                       stride=stride, padding=1),
@@ -160,23 +173,24 @@ class Encoder(nn.Module):
         )
 
     def forward(self, x):
+        """Given data sample x, maps it to the latent space, z, outputting parameters of a 
+        categorical distribution
+        """
         return self.conv_stack(x)
 
 class Decoder(nn.Module):
-    """
-    This is the p_phi (x|z) network. Given a latent sample z p_phi 
-    maps back to the original space z -> x.
+    """Custom Module class for Decoder network.
 
-    Inputs:
-    - in_dim : the input dimension
-    - h_dim : the hidden layer dimension
-    - res_h_dim : the hidden dimension of the residual block
-    - n_res_layers : number of layers to stack
-
+    Args:
+        in_dim (int): input dimension
+        h_dim (int): hidden layer dimension
+        res_h_dim (int): hidden dimension of residual block
+        n_res_layers (int): number of layers in residual stack
     """
 
     def __init__(self, in_dim, h_dim, n_res_layers, res_h_dim):
         super(Decoder, self).__init__()
+
         kernel = 4
         stride = 2
 
@@ -194,9 +208,23 @@ class Decoder(nn.Module):
         )
 
     def forward(self, x):
+        """Given a latent sample, z, maps it back to to the original space, x
+        """
         return self.inverse_conv_stack(x)
 
 class VQVAE(nn.Module):
+    """Custom Module class for VQVAE
+    
+    Args:
+        h_dim (int): hidden layer dimension
+        in_dim (int): input dimension
+        res_h_dim (int): hidden dimension of residual block
+        n_res_layers (int): number of layers in residual stack
+        n_embeddings (int): number of embeddings
+        embedding_dim (int): dimension of embedding
+        beta (float): weight of commitment loss in loss term
+        save_img_embedding_map (bool): If true, saves embedding map image
+    """
     def __init__(self, h_dim, res_h_dim, n_res_layers,
                  n_embeddings, embedding_dim, beta, save_img_embedding_map=False):
         super(VQVAE, self).__init__()
