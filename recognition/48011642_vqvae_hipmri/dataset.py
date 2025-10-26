@@ -1,95 +1,118 @@
+"""
+File: datset.py
+Author: Jules de Beer
+Last modified: 2025-10-26
+Adapted from https://github.com/MishaLaskin/vqvae
+
+Description: file for data loading, data preprocessing and creating data loaders for HipMRI dataset
+"""
+
 import cv2
 import numpy as np
+import nibabel as nib
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 from os import listdir
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-import matplotlib.pyplot as plt
 
+# HipMRI data path
+DATA_PATH = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data'
+
+def load_data(batch_size, folder, transform):
+    """Load HipMRI images and return data loader
+
+    Args:
+        batch_size (int): Batch size for data loader
+        folder (string): Path of folder containing specific data split
+        transform (transforms.Compose()): Transformations to apply to data
+
+    Returns:
+        HipMRIDataset: Dataset for specified data split
+        DataLoader: Dataloader for specified data split
+        float: variance of specified data split
+    
+    Example:
+        > transform = transforms.Compose([
+            transforms.ToImage(),
+            transforms.ToDtype(torch.float32, scale=True),
+            transforms.Normalize(mean=[0.28], std=[0.28])
+            ])
+        > data, loader, var = dataset.load_data(32, '/keras_slices_validate', transform)
+    """
+
+    data = HipMRIDataset(DATA_PATH + folder, transform=transform)
+
+    loader = DataLoader(data,
+                        batch_size=batch_size,
+                        shuffle=True,
+                        pin_memory=True)
+    
+    var = np.var(data.data / 255.0)
+
+    return data, loader, var
 
 class HipMRIDataset(Dataset):
     """
-    Creates block dataset of 32X32 images with 3 channels
-    requires numpy and cv2 to work
+    Custom Dataset class for HipMRI dataset
     """
 
-    def __init__(self, file_path, train=True, transform=None):
-        image_names = listdir(file_path)
-        self.data = load_data_2D(file_path, image_names)
+    def __init__(self, path, transform=None):
+        self.data = load_data_2D(path, listdir(path))
         self.transform = transform
 
     def __getitem__(self, index):
         img = self.data[index]
+
         if self.transform is not None:
             img = self.transform(img)
+        
         label = 0
+
         return img, label
 
     def __len__(self):
         return len(self.data)
 
-import nibabel as nib
+def load_data_2D(path, image_names, dtype=np.float32):
+    """Load 2D medical images from list of names and return a 3D array
 
-def to_channels(arr: np.ndarray, dtype=np.uint8)-> np.ndarray:
-    channels = np.unique(arr)
-    res = np.zeros(arr.shape + ( len(channels),), dtype=dtype)
-    for c in channels:
-        c = int(c)
-        res[..., c:c+1][arr == c] = 1
+    Args:
+        path (string): absolute path to images 
+        image_names (string): list of image names
+        dtype (np.type): data type of returned list
+    
+    Returns:
+        list: 3D array of 2D images
 
-    return res
+    Example:
+        > path = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data/keras_slices_validate'
+        > image_names = list_dir(path)
+        > images = load_data_2D(path, image_names)
+    """
 
-#load medical image functions
-def load_data_2D(folder_path, imageNames, normImage=False, categorical=False, dtype=np.float32,
-                 getAffines=False, early_stop=False):
-    '''
-    Load medical image data from names, cases list provided into a list for each.
+    num = len(image_names)
 
-    This function pre-allocates 4D arrays for conv2d to avoid excessive memory
-    usage.
-    normImage: bool (normalise the image 0.0-1.0)
-    early_stop: Stop loading pre-maturely, leaves arrays mostly empty, for quick
-    loading and testing scripts.
-    '''
-    affines = []
-
-    #get fixed size
-    num = len(imageNames)
-    first_case = nib.load(folder_path + '/' + imageNames[0]).get_fdata(caching='unchanged')
+    # get fixed size for images based on first image
+    first_case = nib.load(path + '/' + image_names[0]).get_fdata(caching='unchanged')
+    # remove extra dimensions
     if len(first_case.shape) == 3:
-        first_case = first_case[:,:,0] #sometimes extra dims, remove
-    if categorical:
-        first_case = to_channels(first_case, dtype=dtype)
-        rows, cols, channels = first_case.shape
-        images = np.zeros((num, rows, cols, channels), dtype=dtype)
-    else:
-        rows, cols = first_case.shape
-        images = np.zeros((num, rows, cols), dtype=dtype)
+        first_case = first_case[:,:,0]
+    # make list for loaded images
+    rows, cols = first_case.shape
+    images = np.zeros((num, rows, cols), dtype=dtype)
 
-    for i, inName in enumerate(imageNames):
-        niftiImage = nib.load(folder_path + '/' + inName)
-        inImage = niftiImage.get_fdata(caching='unchanged') #read disk only
-        affine = niftiImage.affine
-        if inImage.shape != (rows, cols):
-            inImage = cv2.resize(inImage, dsize=(cols, rows), interpolation=cv2.INTER_CUBIC)
-        if len(inImage.shape) == 3:
-            inImage = inImage[:,:,0] #sometimes extra dims in HipMRI_study data
-        inImage = inImage.astype(dtype)
-        if normImage:
-            #~ inImage = inImage / np.linalg.norm(inImage)
-            #~ inImage = 255. * inImage / inImage.max()
-            inImage = (inImage- inImage.mean()) / inImage.std()
-        if categorical:
-            inImage = to_channels(inImage, dtype=dtype)
-            images[i,:,:,:] = inImage
-        else:
-            images[i,:,:] = inImage
+    for i, name in enumerate(image_names):
+        # load image
+        niftiImage = nib.load(path + '/' + name)
+        image = niftiImage.get_fdata(caching='unchanged') #read disk only
+        # resize using interpolation
+        if image.shape != (rows, cols):
+            image = cv2.resize(image, dsize=(cols, rows), interpolation=cv2.INTER_CUBIC)
+        # remove extra dimensions
+        if len(image.shape) == 3:
+            image = image[:,:,0]
+        # add to list
+        images[i,:,:] = image.astype(dtype)
 
-        affines.append(affine)
-        if i > 20 and early_stop:
-            break
-
-    if getAffines:
-        return images, affines
-    else:
-        return images
+    return images
