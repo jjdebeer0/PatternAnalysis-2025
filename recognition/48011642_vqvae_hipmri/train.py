@@ -6,6 +6,7 @@ Adapted from https://github.com/MishaLaskin/vqvae
 
 Description: file for training, validating, testing and saving VQVAE
 """
+
 import numpy as np
 import torch
 import torch.optim as optim
@@ -39,7 +40,7 @@ args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if args.save:
-    print('Results will be saved in ./results/vqvae_' + args.filename + '.pth')
+    print('Results will be saved in /vqvae_' + args.filename + '.pth')
 
 # Define data transforms and load data splits with data loaders from dataset.py
 train_transform = transforms.Compose([
@@ -55,20 +56,23 @@ eval_transform = transforms.Compose([
     transforms.Normalize(mean=[0.28], std=[0.28])
     ])
 
-train_data, train_loader, train_var = dataset.load_data(args.batch_size, '/keras_slices_train', train_transform)
-val_data, val_loader, val_var = dataset.load_data(args.batch_size, '/keras_slices_validate', eval_transform)
+train_data, train_loader, train_var = dataset.load_data(args.batch_size, '/keras_slices_train',
+                                                        train_transform)
+val_data, val_loader, val_var = dataset.load_data(args.batch_size, '/keras_slices_validate',
+                                                  eval_transform)
 test_data, test_loader, test_var = dataset.load_data(540, '/keras_slices_test', eval_transform)
 
 # Set up VQVAE model with components from modules.py
-model = VQVAE(args.n_hiddens, args.n_residual_hiddens, args.n_residual_layers, args.n_embeddings, args.embedding_dim, args.beta).to(device)
+model = VQVAE(args.n_hiddens, args.n_residual_hiddens, args.n_residual_layers, args.n_embeddings,
+              args.embedding_dim, args.beta).to(device)
 
 def train():
     """Train model, including a validation step"""
 
     # Set up optimiser and leanring rate scheduler
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
+    optimizer = optim.Adam(model.parameters(), lr = args.learning_rate, amsgrad = True)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=5000, eta_min=3e-5
+        optimizer, T_0 = 5000, eta_min = 3e-5
     )
 
     # Set up dictionary for tracking metrics during training
@@ -116,7 +120,7 @@ def train():
             val_loss = val_recon_loss + val_embedding_loss
 
             # Calculate structural similarity between original and reconstructed images
-            ssim = utils.calculate_ssim(v, v_hat)
+            ssim, _ = utils.calculate_ssim(v, v_hat)
 
             # Save validation metrics
             metrics["val_recon_errors"].append(val_recon_loss.cpu().detach().numpy())
@@ -161,7 +165,7 @@ def test():
         recon_loss = torch.mean((x_hat - x)**2) / test_var
         loss = recon_loss + embedding_loss
         # Calculate structural similarity between original and reconstructed images
-        ssim = utils.calculate_ssim(x, x_hat)
+        ssim, _ = utils.calculate_ssim(x, x_hat)
 
         # Save testing metrics
         metrics["ssim"].append(ssim)            
