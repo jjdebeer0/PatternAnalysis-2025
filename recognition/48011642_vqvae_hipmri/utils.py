@@ -177,14 +177,14 @@ def display_image_grid(images, name, labels=None):
         > display_image_grid(x, 'original')
     """
 
-    images = images.cpu().detach()+0.5
+    images = images.cpu().detach() + 0.5
     images = images.numpy()
 
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize = (8, 8))
     cols = 8
     rows = 4
 
-    for i in range(1, cols*rows + 1):
+    for i in range(1, cols * rows + 1):
 
         label = ""
         if labels is not None:
@@ -192,7 +192,7 @@ def display_image_grid(images, name, labels=None):
         
         ax = fig.add_subplot(rows, cols, i)
         ax.set_title(label)
-        plt.imshow(np.transpose(images[i - 1], (1,2,0)), interpolation='nearest', cmap='gray')
+        plt.imshow(np.transpose(images[i - 1], (1, 2, 0)), interpolation='nearest', cmap='gray')
         plt.axis('off')
     
     plt.savefig(f'{name}.png')
