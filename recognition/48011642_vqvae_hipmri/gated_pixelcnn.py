@@ -11,11 +11,11 @@ import sys
 add vqvae and pixelcnn dirs to path
 make sure you run from vqvae directory
 """
-current_dir = sys.path.append(os.getcwd())
-pixelcnn_dir = sys.path.append(os.getcwd()+ '/pixelcnn')
+current_dir = os.getcwd()
+pixelcnn_dir = os.getcwd()
 
-from pixelcnn.models import GatedPixelCNN
-import utils
+from models import GatedPixelCNN
+import dataset
 
 """
 Hyperparameters
@@ -35,7 +35,7 @@ parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--img_dim", type=int, default=8)
 parser.add_argument("--input_dim", type=int, default=1,
     help='1 for grayscale 3 for rgb')
-parser.add_argument("--n_embeddings", type=int, default=512,
+parser.add_argument("--n_embeddings", type=int, default=256,
     help='number of embeddings from VQ VAE')
 parser.add_argument("--n_layers", type=int, default=15)
 parser.add_argument("--learning_rate", type=float, default=3e-4)
@@ -48,7 +48,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data loaders
 """
 if args.dataset == 'LATENT_BLOCK':
-    _, _, train_loader, test_loader, _ = utils.load_data_and_data_loaders('LATENT_BLOCK', args.batch_size)
+    _, train_loader, _ = dataset.load_latent_block(args.batch_size, '/latent_e_indices_train.npy', None, current_dir)
+    _, test_loader, _ = dataset.load_latent_block(args.batch_size, '/latent_e_indices_test.npy', None, current_dir)
+
 else:
     train_loader = torch.utils.data.DataLoader(
         eval('datasets.'+args.dataset)(
@@ -65,7 +67,7 @@ else:
         num_workers=args.num_workers, pin_memory=True
     )
 
-model = GatedPixelCNN(args.n_embeddings, args.img_dim**2, args.n_layers).to(device)
+model = GatedPixelCNN(args.n_embeddings, 32, args.n_layers).to(device)
 criterion = nn.CrossEntropyLoss().cuda()
 opt = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
@@ -80,7 +82,11 @@ def train():
         start_time = time.time()
         
         if args.dataset == 'LATENT_BLOCK':
-            x = (x[:, 0]).cuda()
+            print(x.size())
+            x = x.cuda()
+            # x = torch.reshape(x, (args.batch_size, 32, 64)).cuda()
+            # x = (x[:, 0]).cuda()
+            print(x.size())
         else:
             x = (x[:, 0] * (K-1)).long().cuda()
         label = label.cuda()
@@ -145,7 +151,7 @@ def generate_samples(epoch):
 
     x_tilde = model.generate(label, shape=(args.img_dim,args.img_dim), batch_size=100)
     
-    print(x_tilde[0])
+    np.save(f'latent_samples_{epoch}.npy', x_tilde[0])
 
 
 
@@ -164,5 +170,5 @@ for epoch in range(1, args.epochs):
         torch.save(model.state_dict(), 'results/{}_pixelcnn.pt'.format(args.dataset))
     else:
         print("Not saving model! Last saved: {}".format(LAST_SAVED))
-    if args.gen_samples:
+    if args.gen_samples and epoch % 20 == 0:
         generate_samples(epoch)

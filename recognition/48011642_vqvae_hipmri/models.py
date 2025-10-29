@@ -116,7 +116,8 @@ class GatedPixelCNN(nn.Module):
 
     def forward(self, x, label):
         shp = x.size() + (-1, )
-        x = self.embedding(x.view(-1)).view(shp)  # (B, H, W, C)
+        x = self.embedding(x.view(-1)).view(shp)  # (B, H, W, C) -> wants (B, 8, 8, 1) or (B, 32, 64, 32)
+        print(x.shape)
         x = x.permute(0, 3, 1, 2)  # (B, C, W, H)
 
         x_v, x_h = (x, x)

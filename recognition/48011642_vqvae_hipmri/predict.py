@@ -12,6 +12,7 @@ import utils
 import dataset
 import argparse
 import torchvision.transforms.v2 as transforms
+import numpy as np
 
 parser = argparse.ArgumentParser()
 
@@ -63,3 +64,34 @@ utils.display_image_grid(args.n_predictions, x_hat, 'prediction', labels)
 diffs = torch.from_numpy(np.array(diffs))
 diffs = diffs.to(device)
 utils.display_image_grid(args.n_predictions, diffs, 'differences')
+
+params = vqvae_data['hyperparameters']
+
+def generate_samples(e_indices):
+    min_encodings = torch.zeros(e_indices.shape[0], params['n_embeddings']).to(device)
+    min_encodings.scatter_(1, e_indices, 1)
+    e_weights = model.vector_quantization.embedding.weight
+    z_q = torch.matmul(min_encodings, e_weights).view((params["batch_size"],8,8,params["embedding_dim"])) 
+    z_q = z_q.permute(0, 3, 1, 2).contiguous()
+
+    x_recon = model.decoder(z_q)
+    return x_recon, z_q,e_indices
+
+import os
+data_folder_path = os.getcwd() 
+data_file_path = data_folder_path + '/latent_samples_100.npy'
+
+samples = np.load(data_file_path,allow_pickle=True)
+
+def reconstruct_from_pixelcnn(model,samples):
+    
+
+    min_encoding_indices = torch.tensor(samples).reshape(-1,1).long().to(device)
+    x_recon, z_q,e_indices = generate_samples(min_encoding_indices)
+    
+    return x_recon, z_q,e_indices
+
+
+x_val_recon,z_q,e_indices = reconstruct_from_pixelcnn(model,samples)
+
+utils.display_image_grid(8, x_val_recon, 'generated.png')
