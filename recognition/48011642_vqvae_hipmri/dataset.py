@@ -16,10 +16,7 @@ from os import listdir
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-# HipMRI data path
-DATA_PATH = '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data'
-
-def load_data(batch_size, folder, transform):
+def load_data(batch_size, folder, transform, data_path):
     """Load HipMRI images and return data loader
 
     Args:
@@ -38,10 +35,11 @@ def load_data(batch_size, folder, transform):
             transforms.ToDtype(torch.float32, scale=True),
             transforms.Normalize(mean=[0.28], std=[0.28])
             ])
-        > data, loader, var = dataset.load_data(32, '/keras_slices_validate', transform)
+        > data, loader, var = dataset.load_data(32, '/keras_slices_validate', transform,
+        '/home/groups/comp3710/HipMRI_Study_open/keras_slices_data')
     """
 
-    data = HipMRIDataset(DATA_PATH + folder, transform=transform)
+    data = HipMRIDataset(data_path + folder, transform=transform)
 
     loader = DataLoader(data,
                         batch_size=batch_size,

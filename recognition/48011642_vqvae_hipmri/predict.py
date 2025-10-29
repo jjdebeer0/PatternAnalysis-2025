@@ -17,7 +17,9 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--model_relative_path", type = str,
                     default = '/vqvae_data_sun_oct_19_22_46_34_2025.pth')
-parser.add_argument("--image_relative_folder_path", type = int, default = '/keras_slices_test')
+parser.add_argument("--data_path", type=str,
+                    default='/home/groups/comp3710/HipMRI_Study_open/keras_slices_data')
+parser.add_argument("--image_folder", type = str, default = '/keras_slices_test')
 parser.add_argument("--n_predictions", type = int, default = 4)
 
 args = parser.parse_args()
@@ -33,7 +35,8 @@ transform = transforms.Compose([
     transforms.ToDtype(torch.float32, scale=True),
     transforms.Normalize(mean=[0.28], std=[0.28])
     ])
-data, data_loader, data_var = dataset.load_data(args.n_predictions, args.image_relative_folder_path, transform)
+data, data_loader, data_var = dataset.load_data(args.n_predictions, args.image_folder, transform,
+                                                args.data_path)
 
 # Reconstruct data
 (x, _) = next(iter(data_loader))
@@ -43,7 +46,7 @@ with torch.no_grad():
     _, x_hat, _ = model(x)
 
 # Display original images
-utils.display_image_grid(x, 'original')
+utils.display_image_grid(args.n_predictions, x, 'original')
 
 # Display reconstructed images with structural similarity index
 diffs = []
@@ -51,10 +54,12 @@ labels = []
 for i in range(args.n_predictions):
     x_t = torch.unsqueeze(x[i], dim = 0)
     x_r = torch.unsqueeze(x_hat[i], dim = 0)
-    ssim, diff = utils.calculate_ssim(x_t, x_r)
+    ssim, diff = utils.calculate_ssim(x_t, x_r, full = True)
     labels.append(round(ssim, 3))
     diffs.append(diff)
-utils.display_image_grid(x_hat, 'prediction', labels)
+utils.display_image_grid(args.n_predictions, x_hat, 'prediction', labels)
 
 # Display representation of differences between original and reconstructed images
-utils.display_image_grid(diff, 'differences')
+diffs = torch.from_numpy(np.array(diffs))
+diffs = diffs.to(device)
+utils.display_image_grid(args.n_predictions, diffs, 'differences')

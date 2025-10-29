@@ -18,7 +18,7 @@ from scipy.signal import savgol_filter
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def calculate_ssim(x, x_hat):
+def calculate_ssim(x, x_hat, full = False):
     """Calculate structural similarity index for paired image and reconstruction
 
     Args:
@@ -27,7 +27,7 @@ def calculate_ssim(x, x_hat):
     
     Returns:
         tuple: the SSIM value ranging from -1 (inverse correlation) to 1 (perfect correlation)
-        and an image highlighting differences between the two input images
+        and an image (array) highlighting differences between the two input images
     
     Examples:
         > x = x.to(device)
@@ -40,7 +40,7 @@ def calculate_ssim(x, x_hat):
     x_hat = torch.squeeze(x_hat, dim = 1)
 
     x, x_hat = x.cpu().detach().numpy(), x_hat.cpu().detach().numpy()
-    return ssim(x, x_hat, channel_axis = 0, data_range = 255)
+    return ssim(x, x_hat, channel_axis = 0, data_range = 255, full = full)
 
 def readable_timestamp():
     """Format timestamp
@@ -164,10 +164,11 @@ def plot_metrics(metrics):
     plt.savefig("metrics.png")
     plt.close()
 
-def display_image_grid(images, name, labels=None):
+def display_image_grid(num_images, images, name, labels = None):
     """Generates grid of images for given images and saves to current directory
 
     Args:
+        num_images (int): number of images to display
         images (Tensor): 2D grayscale images
         name (str): name of the plot
         labels (list): list of labels for each image
@@ -181,10 +182,10 @@ def display_image_grid(images, name, labels=None):
     images = images.numpy()
 
     fig = plt.figure(figsize = (8, 8))
-    cols = 8
-    rows = 4
+    cols = 4
+    rows = num_images // cols if num_images % cols == 0 else num_images // cols + 1
 
-    for i in range(1, cols * rows + 1):
+    for i in range(1, num_images + 1):
 
         label = ""
         if labels is not None:

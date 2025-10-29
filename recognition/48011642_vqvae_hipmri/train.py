@@ -21,6 +21,8 @@ parser = argparse.ArgumentParser()
 # Hyper parameters
 timestamp = utils.readable_timestamp()
 
+parser.add_argument("--data_path", type=str,
+                    default='/home/groups/comp3710/HipMRI_Study_open/keras_slices_data')
 parser.add_argument("--batch_size", type=int, default=32)
 parser.add_argument("--n_updates", type=int, default=80000)
 parser.add_argument("--n_hiddens", type=int, default=256)
@@ -57,10 +59,11 @@ eval_transform = transforms.Compose([
     ])
 
 train_data, train_loader, train_var = dataset.load_data(args.batch_size, '/keras_slices_train',
-                                                        train_transform)
+                                                        train_transform, args.data_path)
 val_data, val_loader, val_var = dataset.load_data(args.batch_size, '/keras_slices_validate',
-                                                  eval_transform)
-test_data, test_loader, test_var = dataset.load_data(540, '/keras_slices_test', eval_transform)
+                                                  eval_transform, args.data_path)
+test_data, test_loader, test_var = dataset.load_data(540, '/keras_slices_test', eval_transform,
+                                                     args.data_path)
 
 # Set up VQVAE model with components from modules.py
 model = VQVAE(args.n_hiddens, args.n_residual_hiddens, args.n_residual_layers, args.n_embeddings,
@@ -68,6 +71,8 @@ model = VQVAE(args.n_hiddens, args.n_residual_hiddens, args.n_residual_layers, a
 
 def train():
     """Train model, including a validation step"""
+
+    print("> Training")
 
     # Set up optimiser and leanring rate scheduler
     optimizer = optim.Adam(model.parameters(), lr = args.learning_rate, amsgrad = True)
@@ -120,7 +125,7 @@ def train():
             val_loss = val_recon_loss + val_embedding_loss
 
             # Calculate structural similarity between original and reconstructed images
-            ssim, _ = utils.calculate_ssim(v, v_hat)
+            ssim = utils.calculate_ssim(v, v_hat)
 
             # Save validation metrics
             metrics["val_recon_errors"].append(val_recon_loss.cpu().detach().numpy())
@@ -138,12 +143,14 @@ def train():
                   'Recon Loss:', np.mean(metrics["recon_errors"][-args.log_interval:]),
                   'Loss', np.mean(metrics["loss_vals"][-args.log_interval:]),
                   'Perplexity:', np.mean(metrics["perplexities"][-args.log_interval:]),
-                  'SSIM: ', np.mean(metrics["ssim"][-args.log_interval:]))
+                  'SSIM:', np.mean(metrics["ssim"][-args.log_interval:]))
     
     utils.plot_metrics(metrics)
 
 def test():
     """Test model and report structural similarity index accuracy score"""
+
+    print("> Testing")
     
     # Set up dictionary for tracking metrics during testing
     metrics = {
@@ -165,7 +172,7 @@ def test():
         recon_loss = torch.mean((x_hat - x)**2) / test_var
         loss = recon_loss + embedding_loss
         # Calculate structural similarity between original and reconstructed images
-        ssim, _ = utils.calculate_ssim(x, x_hat)
+        ssim = utils.calculate_ssim(x, x_hat)
 
         # Save testing metrics
         metrics["ssim"].append(ssim)            
@@ -177,7 +184,7 @@ def test():
     print('Recon Loss:', np.mean(metrics["recon_errors"]),
           'Loss', np.mean(metrics["loss_vals"]),
           'Perplexity:', np.mean(metrics["perplexities"]),
-          'SSIM: ', np.mean(metrics["ssim"]))
+          'SSIM:', np.mean(metrics["ssim"]))
 
 if __name__ == "__main__":
     train()
