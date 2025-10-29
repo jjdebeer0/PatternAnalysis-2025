@@ -17,7 +17,7 @@ import numpy as np
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--model_relative_path", type=str,
-                    default='/vqvae_data_sun_oct_19_22_46_34_2025.pth')
+                    default='/vqvae_data_mon_oct_27_06_15_11_2025.pth')
 parser.add_argument("--data_path", type=str,
                     default='/home/groups/comp3710/HipMRI_Study_open/keras_slices_data')
 parser.add_argument("--image_folder", type=str, default='/keras_slices_test')

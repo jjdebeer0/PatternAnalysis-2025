@@ -23,9 +23,9 @@ class ResidualLayer(nn.Module):
     """Custom Module class for ResidualLayer
 
     Args:
-        in_dim (int): input dimensions
-        h_dim (int): hidden layer dimensions
-        res_h_dim (int): hidden dimension of residual block
+        in_dim (int): Input dimensions
+        h_dim (int): Hidden layer dimensions
+        res_h_dim (int): Hidden dimension of residual block
     """
 
     def __init__(self, in_dim, h_dim, res_h_dim):
@@ -50,10 +50,10 @@ class ResidualStack(nn.Module):
     """Custom module class of ResidualStack (stack of residual layers)
 
     Args:
-        in_dim (int): input dimension
-        h_dim (int): hidden layer dimension
-        res_h_dim (int): hidden dimension of residual block
-        n_res_layers (int): number of layers in stack
+        in_dim (int): Input dimension
+        h_dim (int): Hidden layer dimension
+        res_h_dim (int): Hidden dimension of residual block
+        n_res_layers (int): Number of layers in stack
     """
 
     def __init__(self, in_dim, h_dim, res_h_dim, n_res_layers):
@@ -73,9 +73,9 @@ class VectorQuantizer(nn.Module):
     Discretization bottleneck of the VQ-VAE.
 
     Args:
-        n_e: number of embeddings
-        e_dim: dimension of embedding
-        beta: weight of commitment loss in loss term
+        n_e: Number of embeddings
+        e_dim: Dimension of embedding
+        beta: Weight of commitment loss in loss term
             beta * ||z_e(x)-sg[e]||^2
     """
 
@@ -93,14 +93,14 @@ class VectorQuantizer(nn.Module):
         the closest embedding vector e_j
 
         Args:
-            z (tensor): continuous, 4D array of shape (B, C, H, W)
+            z (tensor): Continuous, 4D array of shape (B, C, H, W)
         
         Returns:
-            float: embedding loss (k-clustering loss + commitment loss)
+            float: Embedding loss (k-clustering loss + commitment loss)
             tensor: z_q, discrete, 4D array of shape (B, C, H, W)
-            float: perplexity, a measure of codebook usage (high perplexity, more indices used)
-            tensor: closest encodings
-            tensor: indices of closest encodings
+            float: Perplexity, a measure of codebook usage (high perplexity, more indices used)
+            tensor: Closest encodings
+            tensor: Indices of closest encodings
         """
 
         # reshape and flattent z -> (B, C, H, W) -> (B*H*W, C)
@@ -139,10 +139,10 @@ class Encoder(nn.Module):
     """Custom Module class for Encoder network.
     
     Args:
-        in_dim (int): input dimension
-        h_dim (int): hidden layer dimension
-        res_h_dim (int): hidden dimension of residual block
-        n_res_layers (int): number of layers in residual stack
+        in_dim (int): Input dimension
+        h_dim (int): Hidden layer dimension
+        res_h_dim (int): Hidden dimension of residual block
+        n_res_layers (int): Number of layers in residual stack
     """
 
     def __init__(self, in_dim, h_dim, n_res_layers, res_h_dim):
@@ -174,10 +174,10 @@ class Decoder(nn.Module):
     """Custom Module class for Decoder network.
 
     Args:
-        in_dim (int): input dimension
-        h_dim (int): hidden layer dimension
-        res_h_dim (int): hidden dimension of residual block
-        n_res_layers (int): number of layers in residual stack
+        in_dim (int): Input dimension
+        h_dim (int): Hidden layer dimension
+        res_h_dim (int): Hidden dimension of residual block
+        n_res_layers (int): Number of layers in residual stack
     """
 
     def __init__(self, in_dim, h_dim, n_res_layers, res_h_dim):
@@ -207,13 +207,13 @@ class VQVAE(nn.Module):
     """Custom Module class for VQVAE
     
     Args:
-        h_dim (int): hidden layer dimension
-        in_dim (int): input dimension
-        res_h_dim (int): hidden dimension of residual block
-        n_res_layers (int): number of layers in residual stack
-        n_embeddings (int): number of embeddings
-        embedding_dim (int): dimension of embedding
-        beta (float): weight of commitment loss in loss term
+        h_dim (int): Hidden layer dimension
+        in_dim (int): Input dimension
+        res_h_dim (int): Hidden dimension of residual block
+        n_res_layers (int): Number of layers in residual stack
+        n_embeddings (int): Number of embeddings
+        embedding_dim (int): Dimension of embedding
+        beta (float): Weight of commitment loss in loss term
         save_img_embedding_map (bool): If true, saves embedding map image
     """
 

@@ -75,7 +75,7 @@ def train():
     print("> Training")
 
     # Set up optimiser and leanring rate scheduler
-    optimizer = optim.Adam(model.parameters(), lr = args.learning_rate, amsgrad = True)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, T_0 = 5000, eta_min = 3e-5
     )

@@ -23,11 +23,12 @@ def load_data(batch_size, folder, transform, data_path):
         batch_size (int): Batch size for data loader
         folder (str): Path of folder containing specific data split
         transform (transforms.Compose()): Transformations to apply to data
+        data_path (str): Absolute path to folder containing folders of slices of dataset
 
     Returns:
         HipMRIDataset: Dataset for specified data split
         DataLoader: Dataloader for specified data split
-        float: variance of specified data split
+        float: Variance of specified data split
     
     Example:
         > transform = transforms.Compose([
@@ -76,9 +77,9 @@ def load_data_2D(path, image_names, dtype=np.float32):
     """Load 2D medical images from list of names and return a 3D array
 
     Args:
-        path (str): absolute path to images 
-        image_names (str): list of image names
-        dtype (np.type): data type of returned list
+        path (str): Absolute path to list of images 
+        image_names (str): List of image names
+        dtype (np.type): Data type of returned list
     
     Returns:
         list: 3D array of 2D images

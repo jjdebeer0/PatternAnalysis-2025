@@ -22,17 +22,18 @@ def calculate_ssim(x, x_hat, full=False):
     """Calculate structural similarity index for paired image and reconstruction
 
     Args:
-        x (Tensor): original images
-        x_hat (Tensor): reconstructed images
+        x (Tensor): Original images
+        x_hat (Tensor): Reconstructed images
+        full (bool): If True, return image (array) of differences between two inputs
     
     Returns:
-        tuple: the SSIM value ranging from -1 (inverse correlation) to 1 (perfect correlation)
+        tuple: The SSIM value ranging from -1 (inverse correlation) to 1 (perfect correlation)
         and an image (array) highlighting differences between the two input images
     
     Examples:
         > x = x.to(device)
         > _, x_hat, _ = model(x)
-        > ssim, diff = calculate_ssim(x, x_hat)
+        > ssim, diff = calculate_ssim(x, x_hat, True)
     """
 
     # reshape to (B, H, W) (grayscale image only has one channel anyway)
@@ -46,7 +47,7 @@ def readable_timestamp():
     """Format timestamp
     
     Returns:
-        str: formatted timestamp
+        str: Formatted timestamp
     
     Examples:
         > timestamp = readable_timestamp(timestamp)
@@ -76,27 +77,27 @@ def save_model_and_results(model, metrics, hyperparameters, timestamp):
     }
     torch.save(results_to_save, path + '/vqvae_data_' + timestamp + '.pth')
 
-def load_model(model_filename):
+def load_model(model_path):
     """Load model, metrics and hyperparameters from current directory
 
     Args:
-        model_filename (str): model file name
+        model_path (str): Model path from current directory
 
     Returns:
         VQVAE: VQVAE model
-        dict: dictionary of model data
+        dict: Dictionary of model data
     
     Examples:
-        > model, data = load_model(relative_path)
+        > model, data = load_model('/vqvae_data_mon_oct_27_06_15_11_2025.pth')
     """
 
     path = os.getcwd()
 
     # Load dictionary
     if torch.cuda.is_available():
-        data = torch.load(path + model_filename, weights_only=False)
+        data = torch.load(path + model_path, weights_only=False)
     else:
-        data = torch.load(path+model_filename, map_location=lambda storage, loc: storage,
+        data = torch.load(path+model_path, map_location=lambda storage, loc: storage,
                           weights_only=False)
 
     # Unpack hyperparameters from dictionary
@@ -168,14 +169,14 @@ def display_image_grid(num_images, images, name, labels = None):
     """Generates grid of images for given images and saves to current directory
 
     Args:
-        num_images (int): number of images to display
+        num_images (int): Number of images to display
         images (Tensor): 2D grayscale images
-        name (str): name of the plot
-        labels (list): list of labels for each image
+        name (str): Name of the plot
+        labels (list): List of labels for each image
 
     Examples:
         > x = x.to(device)
-        > display_image_grid(x, 'original')
+        > display_image_grid(4, x, 'original')
     """
 
     images = images.cpu().detach() + 0.5
