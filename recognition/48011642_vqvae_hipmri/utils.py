@@ -18,7 +18,7 @@ from scipy.signal import savgol_filter
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def calculate_ssim(x, x_hat, full = False):
+def calculate_ssim(x, x_hat, full=False):
     """Calculate structural similarity index for paired image and reconstruction
 
     Args:
@@ -36,11 +36,11 @@ def calculate_ssim(x, x_hat, full = False):
     """
 
     # reshape to (B, H, W) (grayscale image only has one channel anyway)
-    x = torch.squeeze(x, dim = 1)
-    x_hat = torch.squeeze(x_hat, dim = 1)
+    x = torch.squeeze(x, dim=1)
+    x_hat = torch.squeeze(x_hat, dim=1)
 
     x, x_hat = x.cpu().detach().numpy(), x_hat.cpu().detach().numpy()
-    return ssim(x, x_hat, channel_axis = 0, data_range = 255, full = full)
+    return ssim(x, x_hat, channel_axis=0, data_range=255, full=full)
 
 def readable_timestamp():
     """Format timestamp
@@ -94,10 +94,10 @@ def load_model(model_filename):
 
     # Load dictionary
     if torch.cuda.is_available():
-        data = torch.load(path + model_filename, weights_only = False)
+        data = torch.load(path + model_filename, weights_only=False)
     else:
-        data = torch.load(path+model_filename, map_location = lambda storage, loc: storage,
-                          weights_only = False)
+        data = torch.load(path+model_filename, map_location=lambda storage, loc: storage,
+                          weights_only=False)
 
     # Unpack hyperparameters from dictionary
     params = data["hyperparameters"]
@@ -133,8 +133,8 @@ def plot_metrics(metrics):
     # Reconstruction loss (training and validation) over time
     f = plt.figure(figsize = (16,4))
     ax = f.add_subplot(1,4,2)
-    ax.plot(recon_errors, label = 'training')
-    ax.plot(val_recon_errors, label = 'validation')
+    ax.plot(recon_errors, label='training')
+    ax.plot(val_recon_errors, label='validation')
     ax.set_yscale('log')
     ax.set_title('Reconstruction Loss')
     ax.set_xlabel('Iteration')
@@ -147,8 +147,8 @@ def plot_metrics(metrics):
 
     # Loss (training and validation) over time
     ax = f.add_subplot(1,4,1)
-    ax.plot(loss_vals, label = 'training')
-    ax.plot(val_loss, label = 'validation')
+    ax.plot(loss_vals, label='training')
+    ax.plot(val_loss, label='validation')
     ax.set_yscale('log')
     ax.set_title('Overall Loss')
     ax.set_xlabel('Iteration')

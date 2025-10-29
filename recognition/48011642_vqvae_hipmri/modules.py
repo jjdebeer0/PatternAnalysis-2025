@@ -35,11 +35,11 @@ class ResidualLayer(nn.Module):
             nn.BatchNorm2d(in_dim),
             nn.ReLU(True),
             nn.Dropout2d(0.2),
-            nn.Conv2d(in_dim, res_h_dim, kernel_size = 3, stride = 1, padding = 1, bias = False),
+            nn.Conv2d(in_dim, res_h_dim, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(res_h_dim),
             nn.ReLU(True),
             nn.Dropout2d(0.2),
-            nn.Conv2d(res_h_dim, h_dim, kernel_size = 1, stride = 1, bias = False)
+            nn.Conv2d(res_h_dim, h_dim, kernel_size=1, stride=1, bias=False)
         )
 
     def forward(self, x):
@@ -108,12 +108,12 @@ class VectorQuantizer(nn.Module):
         z_flattened = z.view(-1, self.e_dim)
 
         # distances from z to embeddings e_j, (z - e)^2 = z^2 + e^2 - 2 e * z
-        d = torch.sum(z_flattened**2, dim=1, keepdim = True) + \
-            torch.sum(self.embedding.weight**2, dim = 1) - 2 * \
+        d = torch.sum(z_flattened**2, dim=1, keepdim=True) + \
+            torch.sum(self.embedding.weight**2, dim=1) - 2 * \
             torch.matmul(z_flattened, self.embedding.weight.t())
 
         # find closest encodings
-        min_encoding_indices = torch.argmin(d, dim = 1).unsqueeze(1)
+        min_encoding_indices = torch.argmin(d, dim=1).unsqueeze(1)
         min_encodings = torch.zeros(min_encoding_indices.shape[0], self.n_e).to(device)
         min_encodings.scatter_(1, min_encoding_indices, 1)
 
@@ -152,15 +152,15 @@ class Encoder(nn.Module):
         stride = 2
 
         self.conv_stack = nn.Sequential(
-            nn.Conv2d(in_dim, h_dim // 2, kernel_size = kernel, stride = stride, padding = 1),
+            nn.Conv2d(in_dim, h_dim // 2, kernel_size=kernel, stride=stride, padding=1),
             nn.BatchNorm2d(h_dim // 2),
             nn.ReLU(),
             nn.Dropout2d(0.2),
-            nn.Conv2d(h_dim // 2, h_dim, kernel_size = kernel, stride = stride, padding=1),
+            nn.Conv2d(h_dim // 2, h_dim, kernel_size=kernel, stride=stride, padding=1),
             nn.BatchNorm2d(h_dim),
             nn.ReLU(),
             nn.Dropout2d(0.2),
-            nn.Conv2d(h_dim, h_dim, kernel_size = kernel-1, stride = stride-1, padding = 1),
+            nn.Conv2d(h_dim, h_dim, kernel_size=kernel-1, stride=stride-1, padding=1),
             ResidualStack(h_dim, h_dim, res_h_dim, n_res_layers)
         )
 
@@ -187,15 +187,15 @@ class Decoder(nn.Module):
         stride = 2
 
         self.inverse_conv_stack = nn.Sequential(
-            nn.ConvTranspose2d(in_dim, h_dim, kernel_size = kernel-1, stride = stride-1,
-                               padding = 1),
+            nn.ConvTranspose2d(in_dim, h_dim, kernel_size=kernel-1, stride=stride-1,
+                               padding=1),
             ResidualStack(h_dim, h_dim, res_h_dim, n_res_layers),
-            nn.ConvTranspose2d(h_dim, h_dim // 2, kernel_size = kernel, stride = stride,
-                               padding = 1),
+            nn.ConvTranspose2d(h_dim, h_dim // 2, kernel_size=kernel, stride=stride,
+                               padding=1),
             nn.BatchNorm2d(h_dim // 2),
             nn.ReLU(),
             nn.Dropout2d(0.2),
-            nn.ConvTranspose2d(h_dim//2, 1, kernel_size = kernel, stride = stride, padding = 1)
+            nn.ConvTranspose2d(h_dim//2, 1, kernel_size=kernel, stride=stride, padding=1)
         )
 
     def forward(self, x):
@@ -222,7 +222,7 @@ class VQVAE(nn.Module):
         super(VQVAE, self).__init__()
         # encode image into continuous latent space
         self.encoder = Encoder(1, h_dim, n_res_layers, res_h_dim)
-        self.pre_quantization_conv = nn.Conv2d(h_dim, embedding_dim, kernel_size = 1, stride = 1)
+        self.pre_quantization_conv = nn.Conv2d(h_dim, embedding_dim, kernel_size=1, stride=1)
         # pass continuous latent vector through discretization bottleneck
         self.vector_quantization = VectorQuantizer(n_embeddings, embedding_dim, beta)
         # decode the discrete latent representation

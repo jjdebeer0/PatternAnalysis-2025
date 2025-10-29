@@ -16,12 +16,12 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--model_relative_path", type = str,
-                    default = '/vqvae_data_sun_oct_19_22_46_34_2025.pth')
+parser.add_argument("--model_relative_path", type=str,
+                    default='/vqvae_data_sun_oct_19_22_46_34_2025.pth')
 parser.add_argument("--data_path", type=str,
                     default='/home/groups/comp3710/HipMRI_Study_open/keras_slices_data')
-parser.add_argument("--image_folder", type = str, default = '/keras_slices_test')
-parser.add_argument("--n_predictions", type = int, default = 4)
+parser.add_argument("--image_folder", type=str, default='/keras_slices_test')
+parser.add_argument("--n_predictions", type=int, default=4)
 
 args = parser.parse_args()
 
@@ -53,9 +53,9 @@ utils.display_image_grid(args.n_predictions, x, 'original')
 diffs = []
 labels = []
 for i in range(args.n_predictions):
-    x_t = torch.unsqueeze(x[i], dim = 0)
-    x_r = torch.unsqueeze(x_hat[i], dim = 0)
-    ssim, diff = utils.calculate_ssim(x_t, x_r, full = True)
+    x_t = torch.unsqueeze(x[i], dim=0)
+    x_r = torch.unsqueeze(x_hat[i], dim=0)
+    ssim, diff = utils.calculate_ssim(x_t, x_r, full=True)
     labels.append(round(ssim, 3))
     diffs.append(diff)
 utils.display_image_grid(args.n_predictions, x_hat, 'prediction', labels)
