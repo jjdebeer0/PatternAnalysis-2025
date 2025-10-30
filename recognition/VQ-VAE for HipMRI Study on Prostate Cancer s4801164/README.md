@@ -126,12 +126,11 @@ _Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (righ
     The prior categorical distribution, $q(z|x)$ probabilities are defined as one-hot:
 
     $$
-    q(z = k|x) = \left\{
-    \begin{array}{l}
+    q(z = k|x) = 
+    \begin{cases}
         1, k = argmin_j||z_e(x) - e_j||_2\\
         0, otherwise\\
-    \end{array}
-    \right. 
+    \end{cases}
     $$
     
     - 1 if $k = j$ (indices) where $j$ is the index of the embedding vector at a minimal distance from $z_e(x)$ (right of Figure 1)
