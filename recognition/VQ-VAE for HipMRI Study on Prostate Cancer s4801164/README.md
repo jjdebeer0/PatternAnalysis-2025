@@ -11,7 +11,7 @@ A generative model learns the probability distribution of the data, allowing sam
 ```
 .
 ├── README.md
-├── dataset.py          # Data loading and preprocessing
+├── dataset.py          # Data loading and pre-processing
 ├── modules.py          # Model components
 ├── train.py            # Training, validating, testing and saving model
 ├── predict.py          # Prediction and visualisation
@@ -97,7 +97,7 @@ parser.add_argument("--n_predictions", type=int, default=4)
 #### Hyperparameters
 To reproduce the results of this report, the use the default hyperparameters. The training loop and other operations use deterministic algorithms wherever possible. Only model weights are radnomised at the beginning of training runs.
 
-#### Dataset and data preprocessing
+#### Dataset and data pre-processing
 The model was trained on the [HipMRI Study for Prostate Cancer](https://doi.org/10.25919/45t8-p065). The data was pre-split into train, validate and test sets as follows:
 - Train: cases 004_week_0 - 035_week_0 
 - Validate: cases 036_week_0 - 039_week_7
