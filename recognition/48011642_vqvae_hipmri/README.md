@@ -115,7 +115,7 @@ Run on an NVIDIA A100 GPU on the Rangpur cluster, belonging to [The University o
 The overall architecture resembles a standard VAE save for the Vector Quantisation step at the bottleneck.
 
 ![VQ-VAE architecture](images/vqvae_architecture.png)
-_Figure 1: VQVAE architecture (left) and visualisation of emebdding space (right) $^1$._
+_Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (right) $^1$._
 
 1. An embedding space $e$ is defined with $K$ latent embeddings of dimensionality $D$: $e_1, e_2, ..., e_K$
 2. The model takes an input $x$
@@ -218,15 +218,15 @@ The distance between the encoder output $z_e(x)$ and the embedding space $e$ whe
 ### Training
 
 #### Data transforms
-All data splits are normalised using a population mean of $0.28$ and standard deviation of $0.28$.
+All data splits are normalised using a population mean of 0.28 and standard deviation of 0.28.
 
-Images in the train set were halved in size ($256\times 128\rightarrow 128\times 64$) for lower resolution, ensuring the complexity of the untransformed images would not impede the model's ability to learn.
+Images in the train set were halved in size (256 x 128 -> 128 x 64) for lower resolution, ensuring the complexity of the untransformed images would not impede the model's ability to learn.
 
 #### Optimiser
 We use the Adam optimsier to adust the model's weights and biases to minimise loss. 
 
 #### Learning rate scheduler
-We use a CosineAnnealingWithWarmRestarts. Learning rate follows a cosine curve from $0.3$ to $0.00003$ over the course of 5000 epochs, at which point the cycle restarts. From Figure 2, we see this allowed the model to break out of local minima and continue to consistently improve accuracy.
+We use a CosineAnnealingWithWarmRestarts. Learning rate follows a cosine curve from 0.3 to 0.00003 over the course of 5000 epochs, at which point the cycle restarts. From Figure 2, we see this allowed the model to break out of local minima and continue to consistently improve accuracy.
 
 #### Metrics
 ##### Overall loss and reconstruction loss
@@ -274,6 +274,9 @@ _Figure 6: Example reconstructions corresponding to input 2D slices in Figure 5.
 ![image](images/differences.png)
 
 _Figure 7: Difference images generated alongside the SSIM when comparing the images in Figure 5 and Figure 6._
+
+## Acknowledgements
+MishaLAskin for providing the base VQ-VAE implementation from which this model was adapted: https://github.com/MishaLaskin/vqvae/tree/master
 
 ## References
 1. https://arxiv.org/abs/1711.00937
