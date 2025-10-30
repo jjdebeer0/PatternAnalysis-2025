@@ -1,7 +1,7 @@
 """
 File: predict.py
 Author: Jules de Beer
-Last modified: 2025-10-26
+Last modified: 2025-10-30
 Adapted from https://github.com/MishaLaskin/vqvae
 
 Description: file for predicting results and providing visualisations of trained model
