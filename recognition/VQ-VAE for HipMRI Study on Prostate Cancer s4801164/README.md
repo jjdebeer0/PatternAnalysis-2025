@@ -116,7 +116,7 @@ Run on an NVIDIA A100 GPU on the Rangpur cluster, belonging to [The University o
 The overall architecture resembles a standard VAE save for the Vector Quantisation step at the bottleneck.
 
 ![VQ-VAE architecture](images/vqvae_architecture.png)
-_Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (right) $^1$._
+_Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (right)._ $^1$
 
 1. An embedding space $e$ is defined with $K$ latent embeddings of dimensionality $D$: $e_1, e_2, ..., e_K$
 2. The model takes an input $x$
@@ -125,12 +125,14 @@ _Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (righ
 
     The prior categorical distribution, $q(z|x)$ probabilities are defined as one-hot:
 
-    $ q(z = k|x) = \left\{
-        \begin{array}{l}
-         1, k = argmin_j||z_e(x) - e_j||_2\\
-         0, otherwise\\
-         \end{array}
-         \right. $
+    $$
+    q(z = k|x) = \left\{
+    \begin{array}{l}
+        1, k = argmin_j||z_e(x) - e_j||_2\\
+        0, otherwise\\
+    \end{array}
+    \right. 
+    $$
     
     - 1 if $k = j$ (indices) where $j$ is the index of the embedding vector at a minimal distance from $z_e(x)$ (right of Figure 1)
     - 0 otherwise
