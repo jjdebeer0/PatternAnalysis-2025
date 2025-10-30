@@ -18,6 +18,7 @@ A generative model learns the probability distribution of the data, allowing sam
 ├── requirements.txt    # List of dependencies
 ├── utils.py            # Helper functions
 └── images/             # README.md assets
+    ├── categorical_dist.png
     ├── differences.png
     ├── loss.png
     ├── ssim.png
@@ -125,7 +126,7 @@ _Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (righ
 
     The prior categorical distribution, $q(z|x)$ probabilities are defined as one-hot:
     
-    $$q(z = k|x) = \left \{ \begin{aligned} &1, k = argmin_j||z_e(x) - e_j||_2 \\\\ &0, otherwise \end{aligned}\right.$$
+    ![prior categorical distribution](images/categorical_dist.png)
     
     - 1 if $k = j$ (indices) where $j$ is the index of the embedding vector at a minimal distance from $z_e(x)$ (right of Figure 1)
     - 0 otherwise
