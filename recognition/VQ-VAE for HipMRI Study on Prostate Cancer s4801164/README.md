@@ -124,9 +124,9 @@ _Figure 1: VQ-VAE architecture (left) and visualisation of emebdding space (righ
 4. $z$, the discrete latent variables, are calculated by nearest neighbour look-up of the embedding space $e$
 
     The prior categorical distribution, $q(z|x)$ probabilities are defined as one-hot:
-    ```math
-    q(z = k|x) = \begin{cases} 1, k = argmin_j||z_e(x) - e_j||_2 \\ 0, otherwise\\ \end{cases}
-    ```
+    
+    $q(z = k|x) = \begin{cases} 1, k = argmin_j||z_e(x) - e_j||_2 \\ 0, otherwise\\ \end{cases}$
+    
     - 1 if $k = j$ (indices) where $j$ is the index of the embedding vector at a minimal distance from $z_e(x)$ (right of Figure 1)
     - 0 otherwise
 
