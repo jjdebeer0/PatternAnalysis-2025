@@ -242,7 +242,7 @@ We use [SSIM](https://en.wikipedia.org/wiki/Structural_similarity_index_measure)
 
 From Figure 3, SSIM increases rapidly in the early stages of training as the model learns global features, then slows as the model learns finer features.
 
-The goal was to achieve an SSIM of over 0.6. By the end of training, SSIM was ~0.70.
+The goal was to achieve an SSIM of over 0.6. By the end of training, SSIM was 0.70.
 
 ![image](images/ssim.png)
 
@@ -253,7 +253,7 @@ High perplexity indicates that more indices in the codebook are being used. The 
 
 VQ-VAEs are at risk of codebook collapse where the model only learns to use a few of the values in the codebook, artifically limiting the diversity of outputs it can generate $^8$. 
 
-From Figure 4, we perplexity peaking around epoch 50 000, then steadily decreasing. This may be a sign of overfitting and to reduce number of training epochs.
+From Figure 4, perplexity peaks around epoch 50 000, then steadily decreases. This may be a sign of overfitting and suggests a benefit in reducing number of training epochs.
 
 ![image](images/perplexity.png)
 
@@ -261,7 +261,7 @@ _Figure 4: Perplexity of the train set over the course of training._
 
 ### Testing
 #### Metrics
-Testing metrics were calculated over the entire test set. SSIM was ~0.69, surpassing the benchmark 0.6. 
+Testing metrics were calculated over the entire test set. SSIM was 0.69, surpassing the benchmark 0.6. 
 
 #### Prediction
 ![image](images/original.png)
