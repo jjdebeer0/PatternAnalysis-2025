@@ -11,12 +11,13 @@ A generative model learns the probability distribution of the data, allowing sam
 ```
 .
 ├── README.md
-├── dataset.py      # Data loading and preprocessing
-├── modules.py      # Model components
-├── train.py        # Training, validating, testing and saving model
-├── predict.py      # Prediction and visualisation
-├── utils.py        # Helper functions
-└── images/          # README.md assets
+├── dataset.py          # Data loading and preprocessing
+├── modules.py          # Model components
+├── train.py            # Training, validating, testing and saving model
+├── predict.py          # Prediction and visualisation
+├── requirements.txt    # List of dependencies
+├── utils.py            # Helper functions
+└── images/             # README.md assets
     ├── differences.png
     ├── loss.png
     ├── ssim.png
