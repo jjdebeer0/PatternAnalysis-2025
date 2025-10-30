@@ -1,4 +1,4 @@
-# VQ-VAE generative model for HipMRI Study on Prostate Cancer
+# VQ-VAE for HipMRI Study on Prostate Cancer
 
 ## Introduction
 This project implements a [Vector Quantised Variational Autoencoder (VQ-VAE)](https://arxiv.org/abs/1711.00937) generative model for the [HipMRI Study on Prostate Cancer](https://doi.org/10.25919/45t8-p065) using processed 2D slices. The model produces reasonably clear images with a [Structural Similarity Index Measure (SSIM)](https://en.wikipedia.org/wiki/Structural_similarity_index_measure) of over 0.6.
