@@ -124,41 +124,45 @@ def plot_metrics(metrics):
     """
 
     # Retrieve time course lists for each metric
-    recon_errors = savgol_filter(metrics["recon_errors"], 19, 5)
-    perplexities = savgol_filter(metrics["perplexities"], 19, 5)
-    loss_vals = savgol_filter(metrics["loss_vals"], 19, 5)
+    train_recon_errors = savgol_filter(metrics["train_recon_errors"], 19, 5)
+    train_perplexities = savgol_filter(metrics["train_perplexities"], 19, 5)
+    train_loss = savgol_filter(metrics["train_loss"], 19, 5)
+    train_ssim = savgol_filter(metrics["train_ssim"], 19, 5)
     val_recon_errors = savgol_filter(metrics["val_recon_errors"], 19, 5)
-    val_loss = savgol_filter(metrics["val_loss_vals"], 19, 5)
-    ssim = savgol_filter(metrics["ssim"], 19, 5)
+    val_loss = savgol_filter(metrics["val_loss"], 19, 5)
+    val_perplexities = savgol_filter(metrics["val_perplexities"], 19, 5)
+    val_ssim = savgol_filter(metrics["val_ssim"], 19, 5)
 
     # Reconstruction loss (training and validation) over time
     f = plt.figure(figsize = (16,4))
     ax = f.add_subplot(1,4,2)
-    ax.plot(recon_errors, label='training')
+    ax.plot(train_recon_errors, label='training')
     ax.plot(val_recon_errors, label='validation')
     ax.set_yscale('log')
     ax.set_title('Reconstruction Loss')
-    ax.set_xlabel('Iteration')
+    ax.set_xlabel('Epoch')
 
     # Perplexity (training) over time
     ax = f.add_subplot(1,4,4)
-    ax.plot(perplexities)
+    ax.plot(train_perplexities, label='training')
+    ax.plot(val_perplexities, label='validation')
     ax.set_title('Average codebook usage (perplexity).')
-    ax.set_xlabel('Iteration')
+    ax.set_xlabel('Epoch')
 
     # Loss (training and validation) over time
     ax = f.add_subplot(1,4,1)
-    ax.plot(loss_vals, label='training')
+    ax.plot(train_loss, label='training')
     ax.plot(val_loss, label='validation')
     ax.set_yscale('log')
     ax.set_title('Overall Loss')
-    ax.set_xlabel('Iteration')
+    ax.set_xlabel('Epoch')
 
     # Structural similarity index (validation) over time
     ax = f.add_subplot(1,4,3)
-    ax.plot(ssim)
+    ax.plot(train_ssim, label='training')
+    ax.plot(val_ssim, label='validation')
     ax.set_title('SSIM')
-    ax.set_xlabel('Iteration')
+    ax.set_xlabel('Epoch')
 
     ax.legend()
 
