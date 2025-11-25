@@ -71,7 +71,7 @@ To run the VQ-VAE, run `python3 train.py -save` (`-save` flag to save model). Ad
 ```bash
 parser.add_argument("--data_path", type=str, default='/home/groups/comp3710/HipMRI_Study_open/keras_slices_data')
 parser.add_argument("--batch_size", type=int, default=32)
-parser.add_argument("--n_updates", type=int, default=80000)
+parser.add_argument("--n_epochs", type=int, default=700)
 parser.add_argument("--n_hiddens", type=int, default=256)
 parser.add_argument("--n_residual_hiddens", type=int, default=64)
 parser.add_argument("--n_residual_layers", type=int, default=2)
@@ -95,7 +95,7 @@ parser.add_argument("--n_predictions", type=int, default=4)
 
 ### Reproducibility
 #### Hyperparameters
-To reproduce the results of this report, the use the default hyperparameters. The training loop and other operations use deterministic algorithms wherever possible. Only model weights are radnomised at the beginning of training runs.
+To reproduce the results of this report, the use the default hyperparameters. The training loop and other operations use deterministic algorithms wherever possible. Only model weights are randomised at the beginning of training runs.
 
 #### Dataset and data pre-processing
 The model was trained on the [HipMRI Study for Prostate Cancer](https://doi.org/10.25919/45t8-p065). The data was pre-split into train, validate and test sets as follows:
@@ -221,6 +221,8 @@ All data splits are normalised using a population mean of 0.28 and standard devi
 
 Images in the train set were halved in size (256 x 128 -> 128 x 64) for lower resolution, ensuring the complexity of the untransformed images would not impede the model's ability to learn.
 
+Data augmentation was performed on the train set by randomly cropping and resizing and a randomly flipping horizontally.
+
 #### Optimiser
 We use the Adam optimsier to adust the model's weights and biases to minimise loss. 
 
@@ -229,37 +231,37 @@ We use a CosineAnnealingWithWarmRestarts. Learning rate follows a cosine curve f
 
 #### Metrics
 ##### Overall loss and reconstruction loss
-We plot overall loss and reconstruction loss for training and validation sets to track the model's training. Training and validation loss are closely mirrored. There is no divergence that would suggest overfitting. By the end of training, recnostruction loss was contributing the majority of the overall loss, so the embedding space and encoder are well optimised.
+We plot overall loss and reconstruction loss for training and validation sets to track the model's training. Training and validation loss are closely mirrored. There is no divergence that would suggest overfitting. By the end of training, reconstruction loss was contributing the majority of the overall loss, so the embedding space and encoder are well optimised.
 
 ![image](images/loss.png)
 
-_Figure 2: Overall loss of training (blue) and validation (orange) sets over the course of training._
+_Figure 2: Overall loss of train (blue) and validation (orange) sets over the course of training._
 
 ##### Structural Similarity Index Measure (SSIM)
-We use [SSIM](https://en.wikipedia.org/wiki/Structural_similarity_index_measure) from the scikit-learn library to calculate SSIM during validation as a measure of accuracy between the original ($x$) and reconstructed ($z_q$) images.
+We use [SSIM](https://en.wikipedia.org/wiki/Structural_similarity_index_measure) from the scikit-learn library to calculate SSIM during validation as a measure of accuracy between the original ($x$) and reconstructed ($z_q$) images for training and validation sets.
 
 From Figure 3, SSIM increases rapidly in the early stages of training as the model learns global features, then slows as the model learns finer features.
 
-The goal was to achieve an SSIM of over 0.6. By the end of training, SSIM was 0.70.
+An early stop was implemented to break the training loop when validation SSIM surpassed 0.65. 
 
 ![image](images/ssim.png)
 
-_Figure 3: SSIM of validation set over the course of training._
+_Figure 3: SSIM of train (blue) and validation (orange) sets over the course of training._
 
 ##### Average codebook usage (perplexity)
 High perplexity indicates that more indices in the codebook are being used. The more indices used, the more diverse the set of output values the model can generate.
 
 VQ-VAEs are at risk of codebook collapse where the model only learns to use a few of the values in the codebook, artifically limiting the diversity of outputs it can generate $^8$. 
 
-From Figure 4, perplexity peaks around epoch 50 000, then steadily decreases. This may be a sign of overfitting and suggests a benefit in reducing number of training epochs.
+From Figure 4, perplexity for both training and validation sets steadily increases over the course of training.
 
 ![image](images/perplexity.png)
 
-_Figure 4: Perplexity of the train set over the course of training._
+_Figure 4: Perplexity of the train (blue) and validation (orange) sets over the course of training._
 
 ### Testing
 #### Metrics
-Testing metrics were calculated over the entire test set. SSIM was 0.69, surpassing the benchmark 0.6. 
+Testing metrics were calculated over the entire test set. SSIM was 0.64, surpassing the benchmark 0.6. 
 
 #### Prediction
 ![image](images/original.png)
